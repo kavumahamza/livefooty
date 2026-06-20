@@ -155,4 +155,8 @@ describe('teamColor', () => {
   it('handles undefined input with a default color', () => {
     expect(teamColor(undefined)).toBe('hsl(220, 40%, 45%)');
   });
+
+  it('handles whitespace-only input with the default color', () => {
+    expect(teamColor('   ')).toBe('hsl(220, 40%, 45%)');
+  });
 });

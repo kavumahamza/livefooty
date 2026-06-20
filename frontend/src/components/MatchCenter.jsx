@@ -123,16 +123,41 @@ const TABS = ['Summary', 'Lineups', 'Stats'];
 
 function TabStrip({ active, onSelect }) {
   const activeIdx = TABS.indexOf(active);
+  const tabRefs = useRef([]);
+
+  function handleKeyDown(e) {
+    const currentIdx = TABS.indexOf(active);
+    let nextIdx = currentIdx;
+
+    if (e.key === 'ArrowRight') {
+      nextIdx = (currentIdx + 1) % TABS.length;
+    } else if (e.key === 'ArrowLeft') {
+      nextIdx = (currentIdx - 1 + TABS.length) % TABS.length;
+    } else if (e.key === 'Home') {
+      nextIdx = 0;
+    } else if (e.key === 'End') {
+      nextIdx = TABS.length - 1;
+    } else {
+      return;
+    }
+
+    e.preventDefault();
+    onSelect(TABS[nextIdx]);
+    tabRefs.current[nextIdx]?.focus();
+  }
+
   return (
-    <div className="mc-tabs" role="tablist" aria-label="Match sections">
-      {TABS.map((tab) => (
+    <div className="mc-tabs" role="tablist" aria-label="Match sections" onKeyDown={handleKeyDown}>
+      {TABS.map((tab, i) => (
         <button
           key={tab}
+          ref={(el) => { tabRefs.current[i] = el; }}
           role="tab"
           aria-selected={active === tab}
           className={`mc-tab${active === tab ? ' mc-tab--active' : ''}`}
           onClick={() => onSelect(tab)}
           type="button"
+          tabIndex={active === tab ? 0 : -1}
         >
           {tab}
         </button>

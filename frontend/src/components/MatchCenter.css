@@ -203,8 +203,6 @@
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   scrollbar-width: none;
-  /* Position relative for the sliding indicator */
-  position: sticky;
 }
 .mc-tabs::-webkit-scrollbar { display: none; }
 
