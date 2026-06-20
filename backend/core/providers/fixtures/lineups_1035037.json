@@ -1,0 +1,77 @@
+{
+  "get": "fixtures/lineups",
+  "parameters": {
+    "fixture": "1035037"
+  },
+  "errors": [],
+  "results": 2,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "team": {
+        "id": 33,
+        "name": "Manchester United",
+        "logo": "https://media.api-sports.io/football/teams/33.png"
+      },
+      "formation": "4-3-3",
+      "startXI": [
+        {"player": {"id": 900, "name": "A. Onana", "number": 24, "pos": "G", "grid": "1:1"}},
+        {"player": {"id": 901, "name": "D. Dalot", "number": 20, "pos": "D", "grid": "2:4"}},
+        {"player": {"id": 902, "name": "R. Varane", "number": 19, "pos": "D", "grid": "2:3"}},
+        {"player": {"id": 903, "name": "H. Maguire", "number": 5, "pos": "D", "grid": "2:2"}},
+        {"player": {"id": 904, "name": "L. Shaw", "number": 23, "pos": "D", "grid": "2:1"}},
+        {"player": {"id": 905, "name": "C. Gallagher", "number": 8, "pos": "M", "grid": "3:3"}},
+        {"player": {"id": 906, "name": "S. McTominay", "number": 39, "pos": "M", "grid": "3:2"}},
+        {"player": {"id": 907, "name": "B. Fernandes", "number": 8, "pos": "M", "grid": "3:1"}},
+        {"player": {"id": 908, "name": "J. Sancho", "number": 25, "pos": "F", "grid": "4:3"}},
+        {"player": {"id": 909, "name": "M. Rashford", "number": 10, "pos": "F", "grid": "4:2"}},
+        {"player": {"id": 912, "name": "C. Eriksen", "number": 14, "pos": "F", "grid": "4:1"}}
+      ],
+      "substitutes": [
+        {"player": {"id": 911, "name": "A. Garnacho", "number": 17, "pos": "F", "grid": null}},
+        {"player": {"id": 913, "name": "F. Pellistri", "number": 28, "pos": "F", "grid": null}},
+        {"player": {"id": 914, "name": "D. Henderson", "number": 26, "pos": "G", "grid": null}},
+        {"player": {"id": 915, "name": "L. Martinez", "number": 12, "pos": "D", "grid": null}}
+      ],
+      "coach": {
+        "id": 1,
+        "name": "E. ten Hag",
+        "photo": "https://media.api-sports.io/football/coachs/1.png"
+      }
+    },
+    {
+      "team": {
+        "id": 34,
+        "name": "Newcastle",
+        "logo": "https://media.api-sports.io/football/teams/34.png"
+      },
+      "formation": "4-3-3",
+      "startXI": [
+        {"player": {"id": 1200, "name": "N. Pope", "number": 22, "pos": "G", "grid": "1:1"}},
+        {"player": {"id": 1201, "name": "C. Wilson", "number": 9, "pos": "D", "grid": "2:4"}},
+        {"player": {"id": 1202, "name": "J. Trippier", "number": 2, "pos": "D", "grid": "2:3"}},
+        {"player": {"id": 1205, "name": "S. Longstaff", "number": 36, "pos": "D", "grid": "2:2"}},
+        {"player": {"id": 1206, "name": "D. Burn", "number": 33, "pos": "D", "grid": "2:1"}},
+        {"player": {"id": 1207, "name": "J. Willock", "number": 28, "pos": "M", "grid": "3:3"}},
+        {"player": {"id": 1208, "name": "B. Guimaraes", "number": 39, "pos": "M", "grid": "3:2"}},
+        {"player": {"id": 1209, "name": "J. Murphy", "number": 23, "pos": "M", "grid": "3:1"}},
+        {"player": {"id": 1203, "name": "A. Saint-Maximin", "number": 10, "pos": "F", "grid": "4:3"}},
+        {"player": {"id": 1204, "name": "M. Almiron", "number": 24, "pos": "F", "grid": "4:2"}},
+        {"player": {"id": 1210, "name": "J. Isak", "number": 14, "pos": "F", "grid": "4:1"}}
+      ],
+      "substitutes": [
+        {"player": {"id": 1211, "name": "E. Anderson", "number": 35, "pos": "F", "grid": null}},
+        {"player": {"id": 1212, "name": "P. Dummett", "number": 3, "pos": "D", "grid": null}},
+        {"player": {"id": 1213, "name": "L. Dubravka", "number": 12, "pos": "G", "grid": null}}
+      ],
+      "coach": {
+        "id": 2,
+        "name": "E. Howe",
+        "photo": "https://media.api-sports.io/football/coachs/2.png"
+      }
+    }
+  ]
+}
