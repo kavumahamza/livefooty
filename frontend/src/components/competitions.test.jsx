@@ -98,17 +98,19 @@ describe('buildCompetitions', () => {
     expect(others).toHaveLength(0);
   });
 
-  it('falls back to league name as key when league_id is null', () => {
+  it('skips fixtures with null league_id — they appear in neither featured nor others', () => {
     const fixtures = [
       { id: 'a', league_id: null, league: 'Local Cup', country: 'Uganda', status: 'NS',
         league_logo: null, league_flag: null },
-      { id: 'b', league_id: null, league: 'Local Cup', country: 'Uganda', status: 'NS',
+      { id: 'b', league_id: undefined, league: 'Local Cup', country: 'Uganda', status: 'NS',
         league_logo: null, league_flag: null },
+      makeFixture({ league_id: 39, league: 'Premier League', country: 'England' }),
     ];
-    const { others } = buildCompetitions(fixtures);
-    expect(others).toHaveLength(1);
-    expect(others[0].count).toBe(2);
-    expect(others[0].league).toBe('Local Cup');
+    const { featured, others } = buildCompetitions(fixtures);
+    // Only the numeric-id fixture appears; null/undefined-id fixtures are skipped entirely
+    expect(featured).toHaveLength(1);
+    expect(featured[0].league_id).toBe(39);
+    expect(others).toHaveLength(0);
   });
 
   it('FEATURED_LEAGUE_IDS has World Cup (1) as first entry', () => {

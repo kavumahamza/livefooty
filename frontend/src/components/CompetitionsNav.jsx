@@ -95,11 +95,7 @@ export function CompetitionsNav({ competitions, selectedLeagueId, onSelect, load
             <NavItem
               key={comp.league_id ?? comp.league}
               competition={comp}
-              isActive={
-                comp.league_id != null
-                  ? comp.league_id === selectedLeagueId
-                  : comp.league === String(selectedLeagueId)
-              }
+              isActive={comp.league_id === selectedLeagueId}
               onSelect={onSelect}
             />
           ))}

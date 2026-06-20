@@ -17,7 +17,7 @@ function App() {
 
   const competitions = useMemo(
     () => buildCompetitions(navData?.fixtures),
-    [navData]
+    [navData?.fixtures]
   )
 
   // Derive the selected league name for the section header

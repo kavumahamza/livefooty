@@ -36,20 +36,16 @@ export function buildCompetitions(fixtures) {
   const map = new Map();
 
   for (const f of fixtures) {
-    // Skip fixtures without a usable league identifier
+    // Skip fixtures without a numeric league_id — null-id paths are dead data
     const id = f.league_id;
-    const name = f.league;
-    if (id == null && !name) continue;
+    if (id == null) continue;
 
-    // Stable map key: prefer numeric id, fall back to league name string
-    const key = id != null ? id : name;
-
-    if (map.has(key)) {
-      map.get(key).count += 1;
+    if (map.has(id)) {
+      map.get(id).count += 1;
     } else {
-      map.set(key, {
-        league_id: id != null ? id : null,
-        league: name ?? '',
+      map.set(id, {
+        league_id: id,
+        league: f.league ?? '',
         country: f.country ?? '',
         league_logo: f.league_logo ?? null,
         league_flag: f.league_flag ?? null,
