@@ -4,18 +4,20 @@
 
 **Goal:** A mobile-responsive web app showing live football fixtures, auto-updating live scores, and a real-time match center (event timeline of goals/cards/subs, lineups, key stats, and a momentum/event-density visual), deliverable as a working MVP in 2–3 days.
 
-**Architecture:** A single backend **poller** fetches the cheap global live-scores feed on a timer and writes snapshots to a Redis-backed cache; per-match detail (events/stats/lineups) is fetched **on demand only for matches a client currently has open**, each with its own TTL. Clients receive one-way updates over **Server-Sent Events (SSE)** — no WebSocket/Channels. A **provider abstraction** lets us build and demo entirely against recorded real-API fixtures (incl. sparse/null/halftime states) and flip to the live API-Football provider with one env var.
+**Architecture:** A single backend **poller** fetches the cheap global live-scores feed on a timer and writes snapshots to a Redis-backed cache. When a client opens a match, the frontend marks it active (`active_match:<id>` key, 60s TTL); the **poller** — not the request path — refreshes that match's detail (events/stats/lineups) under a per-match lock, each endpoint TTL-gated. **Clients only ever read cache, via plain REST polling** (~20s scores, ~45–90s match) — no SSE, no WebSocket, no long-lived connections, so any plain sync worker serves it. A **provider abstraction** lets us build and demo entirely against committed sample/recorded fixtures (incl. sparse/null/halftime states) and flip to the live API-Football provider with one env var.
 
-**Tech Stack:** Django + Django REST Framework (SSE via `StreamingHttpResponse`), Redis (cache + poller leader lock), React + Vite (responsive), API-Football (api-sports.io) as the live provider.
+**Tech Stack:** Django + Django REST Framework (plain JSON endpoints), Redis (cache + poller leader lock + active-match registry), React + Vite (responsive, polling via a Vite dev proxy for same-origin), API-Football (api-sports.io) as the live provider.
 
 ## Global Constraints
 
 - **Deadline:** Core MVP must be demoable in 2–3 days. Cut order if behind: (1) momentum bar → fall back to event-density strip, (2) live stats/lineups panels → cached/optional, never block the live-score loop.
 - **API budget:** Live launch = API-Football **Pro $19/mo** (7,500 req/day, 300 req/min). NEVER poll events/stats/lineups for all live matches. Global live-scores poll only; per-match detail on demand for OPEN matches, with TTLs: events 30–60s, stats 60–120s, lineups once (15–60 min TTL).
 - **Dev does not touch quota:** All development and demo runs against `MockProvider` replaying recorded JSON. Real API hit only for a short, deliberate validation window.
-- **Transport:** SSE only. One-way server→client. No Django Channels, no WebSocket.
-- **Cache is authoritative for clients:** Filters (date/league/team) run against cached data. Clients NEVER trigger a direct API-Football call.
+- **Transport:** REST polling only. Plain JSON endpoints read from Redis. No SSE, no Channels, no WebSocket, no long-lived streaming responses (avoids the sync-worker-exhaustion trap). Client polls on a timer; dev uses a **Vite proxy** so `/api` is same-origin (no EventSource/CORS-credentials headaches).
+- **Cache is authoritative for clients:** Filters (date/league/team) run against cached data. Clients NEVER trigger a direct API-Football call. **All provider calls are owned by the poller process** — never the request/response path.
+- **Match-detail ownership:** A client opening a match writes `active_match:<id>` (60s TTL). The poller scans active keys each cycle and refreshes that match's detail under a per-match Redis lock. This is the ONLY trigger for per-match fetches — so N open clients cause at most ONE fetch loop per match, not N.
 - **Honesty UX:** Every live surface shows "updated Xs ago"; stale/poller-down/abandoned states render explicitly, never as fresh.
+- **Testing scope:** Unit-test only pure functions (`poll_once`, `acquire_leadership`, normalization, momentum, one-tick cache reads). Do NOT pytest infinite poll loops or browser polling — smoke-test those manually. Keeps the test budget from eating Day 2.
 - **RAM note (dev workstation):** Do not run whole-repo test/lint matrices locally. Run targeted pytest files and the single React build only.
 
 ---
@@ -38,8 +40,8 @@
 - `tests/` — pytest, one file per module
 
 **Frontend (`frontend/`, Vite + React)**
-- `src/api/sse.js` — `useSSE(url)` hook: EventSource + auto-reconnect + last-event timestamp
-- `src/api/rest.js` — fetch helpers for fixtures/match snapshot
+- `src/api/poll.js` — `usePoll(url, intervalMs)` hook: setInterval fetch + `lastUpdatedAt` + error/backoff state
+- `src/api/rest.js` — fetch helpers for fixtures/match snapshot; `vite.config.js` proxies `/api` → Django (same-origin)
 - `src/components/FixturesBrowser.jsx` — date/league/team filters over cached fixtures
 - `src/components/LiveScoreList.jsx` — SSE-subscribed auto-updating score list
 - `src/components/MatchCenter.jsx` — timeline + lineups + stats + momentum strip
@@ -125,12 +127,12 @@ class BaseProvider:
 - [ ] Implement factory.
 - [ ] Run → PASS. Commit: `feat: provider contract + factory`.
 
-### Task 0.3: Record real fixtures (the honest mock data)
+### Task 0.3: Seed fixture corpus from committed sample JSON (no live dependency)
 **Files:** Create `core/providers/fixtures/{fixtures_today.json, live_scores.json, events_<id>.json, stats_<id>.json, stats_sparse_<id>.json, lineups_<id>.json, match_abandoned.json}`.
-- [ ] During the deliberate API validation window (or from API-Football docs sample payloads), save **raw** responses for: a date's fixtures, a live-scores snapshot, one match with rich events+stats+lineups, and one match with **null/sparse stats** and one **abandoned/HT** state.
-- [ ] Commit: `test: recorded real API fixtures incl. sparse/null/abandoned`.
+- [ ] Build the corpus from **API-Football's published v3 docs sample payloads** (raw response shapes for fixtures, fixtures?live=all, fixtures/events, fixtures/statistics, fixtures/lineups). Hand-derive the **sparse/null-stats** and **abandoned/HT** variants by nulling fields in a copy — these MUST exist before normalization is written.
+- [ ] Commit: `test: seed fixture corpus from API-Football docs samples (+ sparse/abandoned variants)`.
 
-> **Why this task is load-bearing:** clean hand-written mocks hide exactly the missing-field/late-event/null-stat failures that break delivery. These recordings ARE the test corpus for normalization and the momentum fallback.
+> **Why this task is load-bearing & has NO live dependency:** the corpus is the test substrate for normalization and the momentum fallback, and it must exist on Day 1. Live API recordings are NOT a prerequisite here — they are enrichment captured later in Task 5.1. This breaks the chicken-and-egg between "need recordings Day 1" and "validate live API Day 3." If a docs sample is ambiguous, add a contract test marked `xfail` until live validation confirms the real shape.
 
 ---
 
@@ -164,12 +166,15 @@ class BaseProvider:
 
 > **Mitigation baked in:** leader lock prevents a scaled-out second poller from doubling quota; in-memory cache is banned (breaks across workers). On crash, clients keep last snapshot + staleness; cold start serves stale-but-labeled then refreshes.
 
-### Task 2.2: On-demand match detail with TTLs
-**Files:** Create `core/match_detail.py`, `tests/test_match_detail.py`.
-**Interfaces:** Produces `get_match_detail(provider, cache, fixture_id) -> MatchDetailDTO`, reading cache first and only calling provider when the per-endpoint TTL (events 45s, stats 90s, lineups 1800s) has expired.
-- [ ] Test: two calls within TTL hit the provider exactly once (assert call count via a spy provider).
-- [ ] Run → FAIL. Implement per-endpoint TTL gating. Run → PASS.
-- [ ] Commit: `feat: TTL-gated on-demand match detail (protects API budget)`.
+### Task 2.2: Poller-owned match detail with active-match registry + TTLs
+**Files:** Create `core/match_detail.py`, `tests/test_match_detail.py`; extend `core/poller.py`.
+**Interfaces:** Produces `mark_active(cache, fixture_id)` (writes `active_match:<id>` w/ 60s TTL), `list_active(cache) -> list[int]`, and `refresh_detail_if_stale(provider, cache, fixture_id)` (per-endpoint TTL gate: events 45s, stats 90s, lineups 1800s; under a per-match Redis lock). The poll loop calls `refresh_detail_if_stale` for each `list_active()` id every cycle and writes `match_detail:<id>` to cache. The REST `/api/match/<id>` view calls `mark_active` then reads `match_detail:<id>` (cache) — it does NOT fetch from the provider itself.
+- [ ] Test: `refresh_detail_if_stale` called twice within TTL hits the provider exactly once (spy provider asserts call count).
+- [ ] Test: two `active_match` ids both registered → poll cycle refreshes both; an expired active key is skipped.
+- [ ] Run → FAIL. Implement registry + TTL gating + per-match lock; wire into the poll loop. Run → PASS.
+- [ ] Commit: `feat: poller-owned match detail via active-match registry (one fetch loop per match, not per client)`.
+
+> **Closes the data-flow gap:** provider calls live ONLY in the poller process. Opening a match just registers interest; the single poller does the work. N clients on the same match ⇒ one fetch loop. Clients (REST or any future stream) only ever read `match_detail:<id>`.
 
 ### Task 2.3: Momentum / event-density computation
 **Files:** Create `core/momentum.py`, `tests/test_momentum.py`.
@@ -180,45 +185,43 @@ class BaseProvider:
 
 ---
 
-## Phase 3 — REST + SSE endpoints (Day 2 PM)
+## Phase 3 — REST polling endpoints (Day 2 PM)
 
-### Task 3.1: REST fixtures + match snapshot (cache-backed)
+### Task 3.1: Cache-backed fixtures + live-scores + match endpoints
 **Files:** Modify `core/views.py`, `core/urls.py`; create `tests/test_rest.py`.
-**Interfaces:** `GET /api/fixtures?date=&league=&team=` filters the cached fixtures snapshot; `GET /api/match/<id>` returns `get_match_detail(...)` + momentum. No direct provider call from the request path except the TTL-gated detail fetch.
+**Interfaces:**
+- `GET /api/fixtures?date=&league=&team=` — filters the cached fixtures snapshot in Python.
+- `GET /api/live` — returns the cached `live_scores` snapshot + `age_seconds` (clients poll this ~20s).
+- `GET /api/match/<id>` — calls `mark_active(cache, id)` then returns cached `match_detail:<id>` + momentum + `age_seconds` (clients poll this ~45–90s).
+- Every response includes `updated_at`/`age_seconds` for the staleness badge. No provider call in any request path.
 - [ ] Test: `/api/fixtures?league=39` returns only that league from cache; unknown filter → empty list not 500.
-- [ ] Run → FAIL. Implement views (read cache, filter in Python). Run → PASS.
-- [ ] Commit: `feat: cache-backed fixtures + match REST endpoints`.
-
-### Task 3.2: SSE streams
-**Files:** Modify `core/views.py`, `core/urls.py`; create `tests/test_sse.py`.
-**Interfaces:** `GET /api/stream/scores` yields `data: <live_scores snapshot>\n\n` every `POLL_INTERVAL`; `GET /api/stream/match/<id>` yields match-detail+momentum on each tick. Use `StreamingHttpResponse` with `text/event-stream`, a heartbeat comment every 15s, and `Cache-Control: no-cache`.
-- [ ] Test: response `Content-Type == text/event-stream`; first chunk parses as the cached snapshot JSON.
-- [ ] Run → FAIL. Implement generator (read cache each tick — does NOT call the API directly). Run → PASS.
-- [ ] Commit: `feat: SSE score + match-center streams`.
+- [ ] Test: `/api/match/<id>` registers `active_match:<id>` and returns the cached detail payload with `age_seconds`.
+- [ ] Run → FAIL. Implement views (read cache, filter in Python, mark active). Run → PASS.
+- [ ] Commit: `feat: cache-backed fixtures + live + match polling endpoints`.
 
 ---
 
 ## Phase 4 — Frontend (Day 2 PM → Day 3)
 
-### Task 4.1: Vite app + SSE hook
-**Files:** Create `frontend/` (`npm create vite@latest frontend -- --template react`), `src/api/sse.js`, `src/api/rest.js`.
-**Interfaces:** `useSSE(url)` returns `{data, lastEventAt, connected}`, auto-reconnects with backoff on `error`, parses `event.data` JSON.
-- [ ] Implement EventSource hook with reconnect + `lastEventAt`. Manual check: connects to `/api/stream/scores`, logs ticks.
-- [ ] Commit: `feat: vite react app + reconnecting SSE hook`.
+### Task 4.1: Vite app + polling hook + dev proxy
+**Files:** Create `frontend/` (`npm create vite@latest frontend -- --template react`), `src/api/poll.js`, `src/api/rest.js`, `vite.config.js`.
+**Interfaces:** `usePoll(url, intervalMs)` returns `{data, lastUpdatedAt, error}`; fetches immediately then on `setInterval`, exponential backoff on error, clears on unmount. `vite.config.js` proxies `/api` → `http://localhost:8000` so the frontend is same-origin (no CORS/credentials issues).
+- [ ] Implement `usePoll` + proxy. Manual check: polls `/api/live`, updates on interval, stops on unmount.
+- [ ] Commit: `feat: vite react app + polling hook + same-origin dev proxy`.
 
 ### Task 4.2: Fixtures browser + filters
 **Files:** Create `src/components/FixturesBrowser.jsx`.
 - [ ] Date/league/team controls; fetch `/api/fixtures` and filter via query params (server filters cache). Responsive list/grid.
 - [ ] Commit: `feat: fixtures browser with date/league/team filters`.
 
-### Task 4.3: Live score list (SSE)
+### Task 4.3: Live score list (polling)
 **Files:** Create `src/components/LiveScoreList.jsx`, `src/components/StaleBadge.jsx`.
-- [ ] Subscribe via `useSSE('/api/stream/scores')`; auto-update scores/minute; `StaleBadge` shows "updated Xs ago" and a "reconnecting…" state when `!connected`.
+- [ ] `usePoll('/api/live', 20000)`; auto-update scores/minute; `StaleBadge` reads `age_seconds` to show "updated Xs ago" and a "stale / reconnecting…" state when `error` or age exceeds threshold.
 - [ ] Commit: `feat: auto-updating live score list with staleness UX`.
 
 ### Task 4.4: Match center + momentum strip
 **Files:** Create `src/components/MatchCenter.jsx`, `src/components/MomentumStrip.jsx`.
-- [ ] Subscribe `useSSE('/api/stream/match/<id>')`; render event timeline (goals/cards/subs), lineups panel (hide gracefully if `null`), key stats (hide null fields), and `MomentumStrip` rendering `mode==="stats"` bar or `mode==="events"` density fallback.
+- [ ] `usePoll('/api/match/<id>', 45000)`; render event timeline (goals/cards/subs), lineups panel (hide gracefully if `null`), key stats (hide null fields), and `MomentumStrip` rendering `mode==="stats"` bar or `mode==="events"` density fallback. **Core deliverable = event timeline; lineups/stats/momentum are layered on top and are the first cut if time is short.**
 - [ ] Commit: `feat: real-time match center with momentum/event-density visual`.
 
 ### Task 4.5: Responsive QA + App shell
@@ -234,17 +237,22 @@ class BaseProvider:
 - [ ] Set `PROVIDER=api_football` + key; run poller for ONE short window during real live matches. Confirm: live-scores feed shape, events present, **which leagues actually return rich stats** (decides whether momentum bar ships as "stats" mode or stays "events"). Record findings; re-save any newly-discovered payload shapes into `fixtures/`.
 - [ ] Commit: `test: live-api validation findings + updated recordings`.
 
-### Task 5.2: Deploy (WebSocket-free is the point)
+### Task 5.2: Deploy (plain stateless web tier + one poller worker)
 **Files:** Create `Dockerfile`(s), `render.yaml`/`fly.toml` or chosen host config, `frontend` static build.
-- [ ] Host with Redis add-on (Render/Fly/Railway). Backend: gunicorn/uvicorn serving DRF + SSE (SSE needs response buffering OFF / proxy `X-Accel-Buffering: no`). Run poller as a separate worker process (one instance). Frontend: static build behind CDN. Set CORS, secrets, `REDIS_URL`.
-- [ ] Smoke test deployed SSE stream. Commit: `chore: deploy config (SSE + redis + worker)`.
+- [ ] Host with Redis add-on (Render/Fly/Railway). Backend = **plain `gunicorn footy.wsgi --workers 3`** (no streaming = no worker-model gymnastics, no async workers needed). Run the poller as a **separate worker process, exactly ONE instance** (`python manage.py run_poller`) — the leader lock is the backstop if the host ever starts two. Frontend: static build behind CDN. Set secrets + `REDIS_URL`. CORS only matters if not same-origin; prefer serving the SPA same-origin or via the CDN with a path rewrite.
+- [ ] Smoke test deployed `/api/live` polling. Commit: `chore: deploy config (wsgi web + single poller worker + redis)`.
 
-> **Deploy gotchas (decide Day 0, not Day 3):** SSE over a proxy needs buffering disabled or events queue up; the poller must run as exactly one worker (not per-web-replica); secrets via env not committed.
+> **Deploy gotchas (decide Day 0, not Day 3):** the poller must run as exactly ONE process (separate from web replicas — scaling web does NOT scale the poller); secrets via env, never committed. No SSE means no proxy-buffering or async-worker traps.
 
 ---
 
 ## Self-Review
 
-- **Spec coverage:** fixtures browser+filters (4.2), auto live scores (2.1/3.2/4.3), match center timeline+lineups+stats (2.2/3.1/4.4), momentum visual w/ fallback (2.3/4.4), real-time (SSE 3.2/4.1), mobile-responsive (4.5), mock-first build (0.3/1.1), $19 budget protection (2.2 TTLs + leader lock 2.1). ✓
-- **Codex mitigations baked in:** separate events/stats/lineups endpoints + TTLs (2.2), momentum demoted with deterministic fallback (2.3), Redis cache + leader lock + staleness UX (1.2/2.1/4.3), recorded-not-clean fixtures (0.3), SSE over Channels (3.2), deploy buffering/one-poller (5.2), free tier is build-only + deliberate validation window (5.1). ✓
-- **Cut order if behind:** momentum bar → event-density (already the fallback); then stats/lineups panels become optional cached; live scores + fixtures + timeline are the non-negotiable core.
+- **Spec coverage:** fixtures browser+filters (4.2), auto live scores (2.1/3.1/4.3), match center timeline+lineups+stats (2.2/3.1/4.4), momentum visual w/ fallback (2.3/4.4), real-time via polling (3.1/4.1), mobile-responsive (4.5), mock-first build (0.3/1.1), $19 budget protection (2.2 TTLs + leader lock 2.1). ✓
+- **Codex round-1 mitigations:** separate events/stats/lineups + TTLs (2.2), momentum demoted w/ deterministic fallback (2.3), Redis cache + leader lock + staleness UX (1.2/2.1/4.3), realistic-not-clean fixture corpus (0.3), free tier build-only + validation window (5.1). ✓
+- **Codex round-2 mitigations:** SSE dropped → REST polling, killing the sync-worker-exhaustion trap (Global Constraints, 3.1, 5.2); match-detail ownership moved entirely into the poller via the `active_match` registry so N clients = 1 fetch loop (2.2); corpus seeded from committed docs samples, breaking the live-data chicken-and-egg (0.3); Vite same-origin proxy removes EventSource/CORS-credentials problems (4.1); tests restricted to pure units, no infinite-loop/stream tests (Global Constraints, 2.x). ✓
+- **Scope ladder (timeline is the top residual risk — one dev, 2–3 days).** Build in this order and stop wherever the clock runs out; every rung is independently demoable:
+  1. **Must-ship core:** fixtures browser + filters, live-score polling list, match page with **event timeline only**, staleness badge, mock provider, one live-validation pass, deploy.
+  2. **If time:** lineups panel, key-stats panel (both cached, hide-on-null).
+  3. **If more time:** momentum strip in `stats` mode (else it stays `events`-density, which rung 1 already covers).
+  - Cut from the top down if behind. Rungs 2–3 are explicitly out of the client's guaranteed 2–3 day commitment and should be framed to them as "bonus if the data cooperates."
