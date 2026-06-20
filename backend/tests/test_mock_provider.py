@@ -150,3 +150,50 @@ def test_lineups_known_player(provider):
 
 def test_lineups_unknown_fixture_returns_none(provider):
     assert provider.get_lineups(9999999) is None
+
+
+# ---------------------------------------------------------------------------
+# Logo / flag fields on FixtureDTO
+# ---------------------------------------------------------------------------
+
+def test_live_scores_home_logo_non_none(provider):
+    """Fixture 1035037 corpus has a home logo URL."""
+    scores = provider.get_live_scores()
+    fix = next((f for f in scores if f.id == 1035037), None)
+    assert fix is not None
+    assert fix.home_logo is not None
+    assert fix.home_logo.startswith("http")
+
+
+def test_live_scores_away_logo_non_none(provider):
+    scores = provider.get_live_scores()
+    fix = next((f for f in scores if f.id == 1035037), None)
+    assert fix is not None
+    assert fix.away_logo is not None
+    assert fix.away_logo.startswith("http")
+
+
+def test_live_scores_league_logo_non_none(provider):
+    scores = provider.get_live_scores()
+    fix = next((f for f in scores if f.id == 1035037), None)
+    assert fix is not None
+    assert fix.league_logo is not None
+    assert fix.league_logo.startswith("http")
+
+
+def test_live_scores_league_flag_non_none(provider):
+    scores = provider.get_live_scores()
+    fix = next((f for f in scores if f.id == 1035037), None)
+    assert fix is not None
+    assert fix.league_flag is not None
+    assert fix.league_flag.startswith("http")
+
+
+def test_fixtures_today_carry_logo_fields(provider):
+    """get_fixtures() results also carry logo fields from the corpus."""
+    import datetime
+    today = datetime.date.today().isoformat()
+    fixtures = provider.get_fixtures(today)
+    # At least one fixture should have a home_logo (corpus has logos)
+    logos_present = [f for f in fixtures if f.home_logo is not None]
+    assert len(logos_present) > 0, "Expected at least one fixture with home_logo"

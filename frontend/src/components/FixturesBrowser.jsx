@@ -27,10 +27,26 @@ function buildUrl(date, league, team) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function LeagueSection({ league, league_id, fixtures, onSelectMatch }) {
+function LeagueLogoImg({ src, alt }) {
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={16}
+      height={16}
+      style={{ borderRadius: 2, objectFit: 'contain', flexShrink: 0 }}
+      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+    />
+  );
+}
+
+function LeagueSection({ league, league_id, league_logo, league_flag, fixtures, onSelectMatch }) {
   return (
     <section className="fbr-league-section" aria-label={league}>
       <header className="fbr-league-header">
+        <LeagueLogoImg src={league_logo} alt={`${league} logo`} />
+        <LeagueLogoImg src={league_flag} alt={`${league} flag`} />
         <span className="fbr-league-name">{league}</span>
         {league_id && (
           <span className="fbr-league-id" aria-hidden="true">#{league_id}</span>
@@ -163,6 +179,8 @@ export function FixturesBrowser({ onSelectMatch }) {
           key={lg.league_id ?? lg.league}
           league={lg.league}
           league_id={lg.league_id}
+          league_logo={lg.league_logo}
+          league_flag={lg.league_flag}
           fixtures={lg.fixtures}
           onSelectMatch={onSelectMatch}
         />

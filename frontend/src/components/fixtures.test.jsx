@@ -83,6 +83,10 @@ describe('groupFixtures', () => {
     status: 'NS',
     minute: null,
     kickoff_utc: '2026-06-20T15:00:00Z',
+    home_logo: null,
+    away_logo: null,
+    league_logo: null,
+    league_flag: null,
     ...overrides,
   });
 
@@ -136,5 +140,38 @@ describe('groupFixtures', () => {
     const { leagues } = groupFixtures(fixtures);
     expect(leagues[0].league_id).toBe(140);
     expect(leagues[1].league_id).toBe(39);
+  });
+
+  it('carries league_logo from first fixture in group', () => {
+    const fixtures = [
+      makeFix({
+        id: 1,
+        league_id: 39,
+        league: 'Premier League',
+        status: 'NS',
+        league_logo: 'https://example.com/pl.png',
+        league_flag: 'https://example.com/gb.svg',
+      }),
+      makeFix({
+        id: 2,
+        league_id: 39,
+        league: 'Premier League',
+        status: 'FT',
+        league_logo: 'https://example.com/pl-other.png',
+        league_flag: 'https://example.com/gb-other.svg',
+      }),
+    ];
+    const { leagues } = groupFixtures(fixtures);
+    expect(leagues).toHaveLength(1);
+    // Takes from first fixture
+    expect(leagues[0].league_logo).toBe('https://example.com/pl.png');
+    expect(leagues[0].league_flag).toBe('https://example.com/gb.svg');
+  });
+
+  it('league_logo and league_flag are null when fixture has none', () => {
+    const fixtures = [makeFix({ id: 1, status: 'NS' })];
+    const { leagues } = groupFixtures(fixtures);
+    expect(leagues[0].league_logo).toBeNull();
+    expect(leagues[0].league_flag).toBeNull();
   });
 });

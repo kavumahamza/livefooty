@@ -14,6 +14,10 @@ class FixtureDTO:
     status: str          # "NS","1H","HT","2H","FT","ABD","PST", etc.
     minute: int | None
     kickoff_utc: str     # ISO8601
+    home_logo: str | None = None
+    away_logo: str | None = None
+    league_logo: str | None = None
+    league_flag: str | None = None
 
 
 @dataclass

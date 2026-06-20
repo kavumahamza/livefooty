@@ -175,7 +175,10 @@
 }
 
 .fbr-home {
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -193,7 +196,9 @@
 }
 
 .fbr-away {
-  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

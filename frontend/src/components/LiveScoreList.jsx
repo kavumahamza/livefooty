@@ -27,11 +27,31 @@ function groupByLeague(fixtures) {
   for (const f of fixtures) {
     const key = f.league_id != null ? f.league_id : f.league;
     if (!map.has(key)) {
-      map.set(key, { league: f.league, league_id: f.league_id ?? null, fixtures: [] });
+      map.set(key, {
+        league: f.league,
+        league_id: f.league_id ?? null,
+        league_logo: f.league_logo ?? null,
+        league_flag: f.league_flag ?? null,
+        fixtures: [],
+      });
     }
     map.get(key).fixtures.push(f);
   }
   return Array.from(map.values());
+}
+
+function LeagueLogoImg({ src, alt }) {
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={16}
+      height={16}
+      style={{ borderRadius: 2, objectFit: 'contain', flexShrink: 0 }}
+      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+    />
+  );
 }
 
 export function LiveScoreList({ onSelectMatch }) {
@@ -72,6 +92,8 @@ export function LiveScoreList({ onSelectMatch }) {
           aria-label={lg.league}
         >
           <header className="fbr-league-header fbr-league-header--live">
+            <LeagueLogoImg src={lg.league_logo} alt={`${lg.league} logo`} />
+            <LeagueLogoImg src={lg.league_flag} alt={`${lg.league} flag`} />
             <span className="fbr-league-name">{lg.league}</span>
             {lg.league_id && (
               <span className="fbr-league-id" aria-hidden="true">#{lg.league_id}</span>

@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { usePoll } from '../api/poll.js';
 import { StaleBadge } from './StaleBadge.jsx';
 import { MomentumStrip } from './MomentumStrip.jsx';
+import { TeamCrest } from './TeamCrest.jsx';
 import { isLive } from './fixtures.js';
 import { eventSide, eventIcon, sortedEvents } from './matchcenter.js';
 import './MatchCenter.css';
@@ -48,7 +49,10 @@ function MatchHeader({ fixture, ageSeconds, error, onBack }) {
       </button>
 
       <div className="mc-scoreline">
-        <span className="mc-team mc-team--home">{fixture.home}</span>
+        <span className="mc-team mc-team--home">
+          <TeamCrest name={fixture.home} logo={fixture.home_logo} size={40} />
+          {fixture.home}
+        </span>
         <div className="mc-score-block">
           <span className="mc-score">
             {fixture.home_score ?? '–'}&nbsp;–&nbsp;{fixture.away_score ?? '–'}
@@ -60,7 +64,10 @@ function MatchHeader({ fixture, ageSeconds, error, onBack }) {
             {minuteDisplay}
           </span>
         </div>
-        <span className="mc-team mc-team--away">{fixture.away}</span>
+        <span className="mc-team mc-team--away">
+          <TeamCrest name={fixture.away} logo={fixture.away_logo} size={40} />
+          {fixture.away}
+        </span>
       </div>
 
       <div className="mc-header-meta">

@@ -83,6 +83,8 @@ export function groupFixtures(fixtures) {
         leagueMap.set(key, {
           league: f.league,
           league_id: f.league_id ?? null,
+          league_logo: f.league_logo ?? null,
+          league_flag: f.league_flag ?? null,
           fixtures: [],
         });
       }

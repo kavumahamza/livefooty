@@ -10,6 +10,7 @@
  * whether rendered inside FixturesBrowser or LiveScoreList.
  */
 import { isLive, formatRowTime } from './fixtures.js';
+import { TeamCrest } from './TeamCrest.jsx';
 
 function scoreStr(home, away, status) {
   if (home == null || away == null) {
@@ -37,11 +38,17 @@ export function FixtureRow({ fixture, onSelect }) {
       <span className={`fbr-time${live ? ' fbr-time--live' : ''}`}>
         {timeLabel}
       </span>
-      <span className="fbr-home">{fixture.home}</span>
+      <span className="fbr-home">
+        <TeamCrest name={fixture.home} logo={fixture.home_logo} size={18} />
+        {fixture.home}
+      </span>
       <span className="fbr-score">
         {scoreStr(fixture.home_score, fixture.away_score, fixture.status)}
       </span>
-      <span className="fbr-away">{fixture.away}</span>
+      <span className="fbr-away">
+        <TeamCrest name={fixture.away} logo={fixture.away_logo} size={18} />
+        {fixture.away}
+      </span>
       {live && <LiveDot />}
     </button>
   );

@@ -25,6 +25,10 @@ def normalize_fixture(raw: dict) -> FixtureDTO:
         status=fix["status"]["short"],      # "1H","HT","FT","NS","ABD", …
         minute=fix["status"].get("elapsed"),  # may be null → None
         kickoff_utc=fix["date"],
+        home_logo=raw.get("teams", {}).get("home", {}).get("logo"),
+        away_logo=raw.get("teams", {}).get("away", {}).get("logo"),
+        league_logo=raw.get("league", {}).get("logo"),
+        league_flag=raw.get("league", {}).get("flag"),
     )
 
 
