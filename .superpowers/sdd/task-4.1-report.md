@@ -112,3 +112,37 @@ Confirmed: `frontend/node_modules` and `frontend/dist` are both listed as ignore
 
 - None blocking. The test for "fetches again after intervalMs" relies on the backoff not triggering on the first tick (skipNextRef starts false) — this is correct and the test confirms it.
 - The `dist/` folder from the build is present locally but gitignored — OK.
+
+---
+
+## Test-coverage fix
+
+**Commit:** `563cff5` — `test: cover usePoll lastUpdatedAt + re-subscribe-on-dep-change`
+
+### New tests added (3)
+
+1. **`lastUpdatedAt advances on success but stays unchanged after a subsequent error`**
+   Mock: first fetch succeeds (`{ score: 1 }`), second fetch rejects (`Network failure`). After the successful fetch, `lastUpdatedAt` rendered in the DOM is a truthy numeric string. After the error tick (advance 5000 ms), the value is identical — confirming `setLastUpdatedAt` is never called on error paths.
+
+2. **`re-subscribes when intervalMs changes: tears down old interval and polls on new cadence`**
+   Render with `intervalMs=20000`. Advance 10 000 ms — no extra fetch (still before interval). Rerender with `intervalMs=5000` — hook re-subscribes, immediate fetch fires. Advance 5 000 ms — one more fetch fires confirming the new 5 000 ms cadence. Old 20 000 ms interval is fully torn down (no 20 000 ms tick ever fires).
+
+3. **`re-subscribes when url changes: fetches the new url`**
+   Render with `url="/api/live"`. Rerender with `url="/api/scores"`. Immediate fetch on re-subscribe uses `/api/scores`. Confirms the effect dependency on `url` triggers cleanup and re-registration.
+
+### Vitest output
+
+```
+ RUN  v4.1.9 /home/kavumah/Desktop/football-live/frontend
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  18:29:36
+   Duration  763ms (transform 32ms, setup 0ms, import 110ms, tests 49ms, environment 493ms)
+```
+
+### Hook correctness verdict
+
+No bugs found. `poll.js` behaved exactly as documented:
+- `lastUpdatedAt` is set only inside the `try` block (success path), never in `catch` — confirmed by the unchanged-on-error assertion passing.
+- The `useEffect` cleanup (`clearInterval` + `controller.abort()`) correctly fires on `url`/`intervalMs` change, enabling a clean re-subscribe with a fresh immediate fetch — confirmed by both re-subscribe tests passing.
