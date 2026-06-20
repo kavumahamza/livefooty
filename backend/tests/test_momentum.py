@@ -5,13 +5,19 @@ Coverage
 --------
 1. Rich stats (attacks_home/away non-None, fixture 1035037) → mode=="stats",
    18 buckets, values in [-1,1], aggregate tilt positive (home attacks > away).
-2. Sparse stats (attacks_home/away None, fixture 2045102) → mode=="events",
-   no raise, 18 buckets, values in [-1,1].
+2. Sparse stats (attacks/dangerous None, fixture 2045102-style) → mode=="stats"
+   (shots_home/away are present, so we still get stats mode), tilt positive
+   (shots_home > shots_away).
 3. stats=None and events=[] → mode=="events", all buckets 0.0, no raise.
 4. Event side assignment: home goal at minute 12 → bucket[2] (ending at 15) > 0.
 5. Event side assignment: away goal at minute 80 → bucket[15] (ending at 80) < 0.
 6. Clamp: event at minute 96 → lands in last bucket (minute=90), no crash.
 7. No team names provided → still returns valid structure (all-zero events mode).
+8. Stats mode with only shots (no attacks/dangerous) → mode=="stats", positive baseline.
+9. Stats mode with only possession → mode=="stats", negative baseline when away dominant.
+10. Stats with ALL pairs None → mode=="events" fallback.
+11. Priority order: both attacks (home-favored) and possession (away-favored) present
+    → baseline uses attacks (positive), not possession.
 """
 from __future__ import annotations
 
@@ -120,22 +126,27 @@ class TestRichStats:
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Sparse stats (attacks None) → mode=="events"
+# Test 2: Sparse stats (attacks/dangerous None, but shots present) → mode=="stats"
+# ---------------------------------------------------------------------------
+# NOTE: _sparse_stats() has shots_home=6, shots_away=5 and possession set.
+# Under the new broadened gate, SHOTS pair counts as rich → mode is now "stats",
+# NOT "events". This is the correct new behavior (LIVE-API validation fix).
 # ---------------------------------------------------------------------------
 
 class TestSparseStats:
     HOME = "Atletico Madrid"
     AWAY = "Valencia"
 
-    def test_mode_is_events(self):
+    def test_mode_is_stats(self):
+        """Sparse stats (no attacks/dangerous) but shots present → mode=='stats'."""
         detail = _make_detail(stats=_sparse_stats())
         result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
-        assert result["mode"] == "events"
+        assert result["mode"] == "stats"
 
     def test_caption(self):
         detail = _make_detail(stats=_sparse_stats())
         result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
-        assert result["caption"] == "based on match events"
+        assert result["caption"] == "based on live stats"
 
     def test_does_not_raise(self):
         detail = _make_detail(stats=_sparse_stats())
@@ -152,6 +163,151 @@ class TestSparseStats:
         result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
         for b in result["buckets"]:
             assert -1.0 <= b["value"] <= 1.0
+
+    def test_baseline_positive_when_shots_home_greater(self):
+        """shots_home=6 > shots_away=5 → mean bucket value positive."""
+        detail = _make_detail(stats=_sparse_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        mean_val = sum(b["value"] for b in result["buckets"]) / len(result["buckets"])
+        assert mean_val > 0.0, f"Expected positive mean (shots_home>shots_away), got {mean_val}"
+
+
+# ---------------------------------------------------------------------------
+# Test 2b: Shots-only stats (no attacks/dangerous) → mode=="stats", positive
+# ---------------------------------------------------------------------------
+
+class TestShotsOnlyStats:
+    HOME = "Home FC"
+    AWAY = "Away FC"
+
+    def _shots_only_stats(self):
+        return {
+            "possession_home": None,
+            "possession_away": None,
+            "shots_home": 8,
+            "shots_away": 4,
+            "attacks_home": None,
+            "attacks_away": None,
+            "dangerous_home": None,
+            "dangerous_away": None,
+        }
+
+    def test_mode_is_stats(self):
+        detail = _make_detail(stats=self._shots_only_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        assert result["mode"] == "stats"
+
+    def test_baseline_positive(self):
+        """shots_home=8 > shots_away=4 → baseline positive."""
+        detail = _make_detail(stats=self._shots_only_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        mean_val = sum(b["value"] for b in result["buckets"]) / len(result["buckets"])
+        assert mean_val > 0.0, f"Expected positive mean, got {mean_val}"
+
+
+# ---------------------------------------------------------------------------
+# Test 2c: Possession-only stats (all of dangerous/attacks/shots None) → mode=="stats"
+# ---------------------------------------------------------------------------
+
+class TestPossessionOnlyStats:
+    HOME = "Home FC"
+    AWAY = "Away FC"
+
+    def _possession_only_stats(self):
+        return {
+            "possession_home": 40,
+            "possession_away": 60,
+            "shots_home": None,
+            "shots_away": None,
+            "attacks_home": None,
+            "attacks_away": None,
+            "dangerous_home": None,
+            "dangerous_away": None,
+        }
+
+    def test_mode_is_stats(self):
+        """Possession pair present → mode=='stats'."""
+        detail = _make_detail(stats=self._possession_only_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        assert result["mode"] == "stats"
+
+    def test_baseline_negative_when_away_dominant(self):
+        """possession_home=40, possession_away=60 → away dominant → baseline negative."""
+        detail = _make_detail(stats=self._possession_only_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        mean_val = sum(b["value"] for b in result["buckets"]) / len(result["buckets"])
+        assert mean_val < 0.0, f"Expected negative mean (away possession dominant), got {mean_val}"
+
+
+# ---------------------------------------------------------------------------
+# Test 2d: All pairs None → mode=="events" fallback
+# ---------------------------------------------------------------------------
+
+class TestAllPairsNone:
+    HOME = "Home FC"
+    AWAY = "Away FC"
+
+    def _all_none_stats(self):
+        return {
+            "possession_home": None,
+            "possession_away": None,
+            "shots_home": None,
+            "shots_away": None,
+            "attacks_home": None,
+            "attacks_away": None,
+            "dangerous_home": None,
+            "dangerous_away": None,
+        }
+
+    def test_mode_is_events(self):
+        """Stats present but all four pairs are None → events fallback."""
+        detail = _make_detail(stats=self._all_none_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        assert result["mode"] == "events"
+
+    def test_caption_is_events(self):
+        detail = _make_detail(stats=self._all_none_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        assert result["caption"] == "based on match events"
+
+    def test_18_buckets(self):
+        detail = _make_detail(stats=self._all_none_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        assert len(result["buckets"]) == 18
+
+
+# ---------------------------------------------------------------------------
+# Test 2e: Priority order — attacks beats possession
+# ---------------------------------------------------------------------------
+
+class TestStatsPriorityOrder:
+    HOME = "Home FC"
+    AWAY = "Away FC"
+
+    def _priority_stats(self):
+        """Both attacks (home-favored 78/61) AND possession (away-favored 40/60)."""
+        return {
+            "possession_home": 40,
+            "possession_away": 60,
+            "shots_home": None,
+            "shots_away": None,
+            "attacks_home": 78,
+            "attacks_away": 61,
+            "dangerous_home": None,
+            "dangerous_away": None,
+        }
+
+    def test_baseline_uses_attacks_not_possession(self):
+        """
+        attacks_home=78 > attacks_away=61 → home-favored baseline (positive).
+        possession_away=60 > possession_home=40 would yield negative.
+        Priority: dangerous > attacks > shots > possession.
+        Attacks is available, so it wins → positive baseline.
+        """
+        detail = _make_detail(stats=self._priority_stats())
+        result = compute_momentum(detail, home_team=self.HOME, away_team=self.AWAY)
+        mean_val = sum(b["value"] for b in result["buckets"]) / len(result["buckets"])
+        assert mean_val > 0.0, f"Expected positive (attacks priority over possession), got {mean_val}"
 
 
 # ---------------------------------------------------------------------------

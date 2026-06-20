@@ -18,9 +18,15 @@ Buckets: 18 fixed 5-minute windows, ending at 5, 10, 15, …, 90.
 
 Mode selection
 --------------
-Use ``mode="stats"`` ONLY when the detail's stats dict is present AND
-``attacks_home`` / ``attacks_away`` are both non-None.  Otherwise fall
-back to ``mode="events"``.
+Use ``mode="stats"`` when the detail's stats dict is present AND at least one
+of these home/away PAIRS is fully non-None:
+  (dangerous_home & dangerous_away) OR (attacks_home & attacks_away) OR
+  (shots_home & shots_away) OR (possession_home & possession_away).
+Otherwise fall back to ``mode="events"``.
+
+This broadened gate is necessary because API-Football's /fixtures/statistics
+endpoint often omits "Attacks"/"Dangerous Attacks" even when possession and
+shots ARE present (observed in LIVE-API validation).
 
 Stats-mode computation (MVP approximation)
 ------------------------------------------
@@ -30,11 +36,11 @@ proper per-minute pressure curve requires the live API's per-minute stats
 endpoint, which is outside this MVP scope.
 
 Approximation used here:
-  1. Derive an aggregate home-pressure baseline from attacks (and dangerous
-     attacks / shots if available):
-       home_share = attacks_home / (attacks_home + attacks_away)
+  1. Derive an aggregate home-pressure baseline from the HIGHEST-PRIORITY
+     available pair, in this order: dangerous > attacks > shots > possession.
+     Pick the first pair where both sides are non-None:
+       home_share = h / (h + a)     (guard h+a==0 → 0.5)
        baseline   = 2 * home_share - 1   → in [-1, 1]
-     Dangerous attacks and shots are blended in with lower weight if present.
   2. Apply a deterministic shaping across the 18 buckets so the curve is not
      completely flat: a cosine modulation adds mild mid-match variation while
      staying centred on the baseline.
@@ -87,10 +93,14 @@ _EVENT_WEIGHT: dict[str, float] = {
     "subst": 0.2,
 }
 
-# Blend weights for stats-mode baseline (must sum to 1.0)
-_ATTACKS_WEIGHT:    float = 0.60
-_DANGEROUS_WEIGHT:  float = 0.25
-_SHOTS_WEIGHT:      float = 0.15
+# Priority order for best-available pressure stat (highest priority first)
+# Each entry is (home_key, away_key)
+_STAT_PRIORITY: list[tuple[str, str]] = [
+    ("dangerous_home", "dangerous_away"),
+    ("attacks_home",   "attacks_away"),
+    ("shots_home",     "shots_away"),
+    ("possession_home", "possession_away"),
+]
 
 # Cosine shaping amplitude (fraction of baseline; keeps curve non-flat)
 _SHAPE_AMPLITUDE: float = 0.20
@@ -147,13 +157,19 @@ def compute_momentum(
 # ---------------------------------------------------------------------------
 
 def _has_rich_stats(stats: dict | None) -> bool:
-    """Return True iff stats is present and has non-None attacks_home/away."""
+    """
+    Return True iff stats is present AND at least one pressure pair is available.
+
+    Checks in priority order: dangerous, attacks, shots, possession.
+    Returns True as soon as any pair has both home and away non-None.
+    Returns False if stats is None or every pair has at least one None side.
+    """
     if stats is None:
         return False
-    return (
-        stats.get("attacks_home") is not None
-        and stats.get("attacks_away") is not None
-    )
+    for home_key, away_key in _STAT_PRIORITY:
+        if stats.get(home_key) is not None and stats.get(away_key) is not None:
+            return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -195,44 +211,25 @@ def _compute_stats_mode(
 
 def _compute_baseline(stats: dict) -> float:
     """
-    Derive a single [-1, 1] home-pressure baseline from aggregate stats.
+    Derive a single [-1, 1] home-pressure baseline from the best-available stat.
 
-    Blends attacks (primary), dangerous attacks, and shots with fixed weights.
-    Falls back to equal-weight components when some fields are None.
+    Uses the HIGHEST-PRIORITY available pair in priority order:
+      dangerous > attacks > shots > possession
+    Picks the first pair where both home and away are non-None, then:
+      home_share = h / (h + a)   (h+a==0 → 0.5 to avoid division by zero)
+      baseline   = 2 * home_share - 1   → range [-1, 1]
+
+    Returns 0.0 if no pair is available (should not happen when _has_rich_stats
+    is True, but safe to handle).
     """
-    components: list[float] = []
-    weights: list[float] = []
-
-    attacks_h = stats.get("attacks_home")
-    attacks_a = stats.get("attacks_away")
-    if attacks_h is not None and attacks_a is not None:
-        total = attacks_h + attacks_a
-        if total > 0:
-            components.append(2.0 * attacks_h / total - 1.0)
-            weights.append(_ATTACKS_WEIGHT)
-
-    dangerous_h = stats.get("dangerous_home")
-    dangerous_a = stats.get("dangerous_away")
-    if dangerous_h is not None and dangerous_a is not None:
-        total = dangerous_h + dangerous_a
-        if total > 0:
-            components.append(2.0 * dangerous_h / total - 1.0)
-            weights.append(_DANGEROUS_WEIGHT)
-
-    shots_h = stats.get("shots_home")
-    shots_a = stats.get("shots_away")
-    if shots_h is not None and shots_a is not None:
-        total = shots_h + shots_a
-        if total > 0:
-            components.append(2.0 * shots_h / total - 1.0)
-            weights.append(_SHOTS_WEIGHT)
-
-    if not components:
-        return 0.0
-
-    # Normalise weights to sum to 1.0
-    total_w = sum(weights)
-    return sum(c * w / total_w for c, w in zip(components, weights))
+    for home_key, away_key in _STAT_PRIORITY:
+        h = stats.get(home_key)
+        a = stats.get(away_key)
+        if h is not None and a is not None:
+            total = h + a
+            home_share = (h / total) if total > 0 else 0.5
+            return 2.0 * home_share - 1.0
+    return 0.0
 
 
 # ---------------------------------------------------------------------------
