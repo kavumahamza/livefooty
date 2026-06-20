@@ -5,6 +5,11 @@ A mobile-responsive web app for live football: browse fixtures by competition, w
 Built with a **single backend poller → cache → polling clients** architecture so the data cost stays flat whether one user or ten thousand are watching.
 
 > **About "streaming":** real broadcast video requires licensing. The live visual feed here is a **real-time match visualization built from sports-data-API events** (scores, goals, cards, momentum) — not rebroadcast video.
+<img width="1834" height="953" alt="image" src="https://github.com/user-attachments/assets/dacd1612-7c68-4bf3-a8d0-7977eb5bc846" />
+
+<img width="1834" height="953" alt="image" src="https://github.com/user-attachments/assets/02e3b7bd-cbba-4a8e-bcc9-be6882dfdccb" />
+
+<img width="1834" height="953" alt="image" src="https://github.com/user-attachments/assets/c8d59a7c-a30a-48d0-b05b-b50af5501031" />
 
 ---
 
