@@ -87,6 +87,14 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+/* Fallback: where backdrop-filter is unsupported, use a solid elevated
+   surface so glass cards never render near-invisible against --bg. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--bg-elev);
+  }
+}
+
 /* ─────────────────────────────────────────────
    @keyframes — Motion
 ───────────────────────────────────────────── */
