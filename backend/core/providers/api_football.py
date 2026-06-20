@@ -111,6 +111,11 @@ class ApiFootballProvider(BaseProvider):
 
             return data.get("response") or []
 
+        logger.error(
+            "API-Football request to %s failed after %d attempts",
+            path,
+            _MAX_RETRIES,
+        )
         raise ProviderError(
             f"ApiFootball request to {url} failed after {_MAX_RETRIES} attempts: {last_exc}"
         )

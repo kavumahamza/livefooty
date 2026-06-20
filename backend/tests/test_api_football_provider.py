@@ -52,6 +52,7 @@ def api_provider():
     return ApiFootballProvider(
         api_key="test-key",
         base_url="https://test.api-sports.io",
+        session=MagicMock(),  # prevent accidental real-network calls
         sleep_fn=lambda _: None,  # no real sleeping in tests
     )
 
