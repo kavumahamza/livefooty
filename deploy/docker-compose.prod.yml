@@ -1,0 +1,26 @@
+# Production override for a public VM (e.g. Oracle Always Free).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+#
+# Changes vs the base compose:
+#   - serves the frontend on the standard HTTP port 80 (clean URL, no :8080)
+#   - restart: always on every service so the stack survives reboots/crashes
+#
+# (All env — PROVIDER, API_FOOTBALL_KEY, DJANGO_SECRET_KEY, DJANGO_DEBUG=0,
+#  DJANGO_ALLOWED_HOSTS=<your-ip-or-domain> — comes from your .env file.)
+
+services:
+  redis:
+    restart: always
+
+  backend-web:
+    restart: always
+
+  poller:
+    restart: always
+
+  frontend:
+    restart: always
+    ports:
+      - "80:80"

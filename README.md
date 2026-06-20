@@ -180,6 +180,15 @@ The pure logic — normalization, cache/staleness, the leader-lock, TTL gating, 
 
 ---
 
+## ☁️ Deploy free, 24/7
+
+Run the whole stack for free on an **Oracle Cloud "Always Free"** ARM VM (no sleeping, no expiry) — see **[DEPLOY-ORACLE.md](DEPLOY-ORACLE.md)** for a step-by-step guide and the one-command setup script (`deploy/oracle-setup.sh`). General container/host notes are in [DEPLOY.md](DEPLOY.md).
+
+```bash
+# on the VM, after the one-time setup (see the guide):
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+```
+
 ## 📜 License
 
 MIT — see [LICENSE](LICENSE) if present, otherwise free to use and adapt.
