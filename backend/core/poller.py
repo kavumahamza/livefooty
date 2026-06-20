@@ -59,6 +59,27 @@ def poll_once(provider: BaseProvider, cache: SnapshotCache) -> list[dict]:
     return payload
 
 
+def poll_fixtures_once(provider: BaseProvider, cache: SnapshotCache) -> list[dict]:
+    """
+    Fetch today's fixture list and write it to the "fixtures" snapshot.
+
+    Separated from poll_once so that:
+    - The live-scores poll (fast, every cycle) and fixture-list poll (slower) can
+      evolve independently.
+    - Existing poll_once tests are not affected.
+
+    Called by run_loop each cycle alongside poll_once so the /api/fixtures
+    endpoint always has fresh data in production.
+    Does NOT sleep or loop.
+    """
+    import datetime as _dt
+    today = _dt.date.today().isoformat()
+    dtos = provider.get_fixtures(today)
+    payload = [dataclasses.asdict(dto) for dto in dtos]
+    cache.set_snapshot("fixtures", payload)
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Leader lock helpers
 # ---------------------------------------------------------------------------
@@ -177,6 +198,9 @@ def run_loop(
 
         # 2. Poll exactly once while confirmed leader.
         poll_once(provider, cache)
+
+        # 2c. Also refresh the fixtures list each cycle so /api/fixtures stays fresh.
+        poll_fixtures_once(provider, cache)
 
         # 2b. Refresh detail for any actively-viewed matches (Task 2.2).
         #     This is intentionally a separate step from poll_once so that
