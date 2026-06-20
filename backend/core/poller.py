@@ -1,0 +1,177 @@
+"""
+core/poller.py — single-cycle poll + Redis leader lock for the live-score poller.
+
+Design notes
+------------
+Leader lock (acquire_leadership):
+    Uses Redis SET key token NX EX ttl — atomic SETNX-with-expiry.  Only the
+    first caller that wins the race gets True; all subsequent callers get False
+    until the key expires.  Token is a per-process UUID so we can distinguish
+    holders.
+
+Leader renewal (renew_leadership):
+    GET key → compare to our token → if match, re-SET with a fresh EX.  This is
+    a GET-then-SET (not a Lua CAS), so there is a tiny race: between the GET and
+    the SET another process could acquire the expired key and our re-SET would
+    silently overwrite it.  For an MVP poller this is acceptable — the worst
+    outcome is both pollers write for one cycle before the non-holder's next
+    acquire attempt fails.  A Lua CAS script would eliminate the race entirely.
+
+poll_once:
+    Calls provider.get_live_scores(), converts each FixtureDTO to a plain dict
+    via dataclasses.asdict (required because SnapshotCache passes the value to
+    json.dumps), and stores the list under key "live_scores".  Returns the list.
+    Must NOT sleep or loop — callers control iteration.
+
+run_loop:
+    Finite/infinite control loop.  max_cycles and sleep_fn are injectable so
+    tests can run exactly N cycles without real sleeping.  The management command
+    passes max_cycles=None (infinite) and sleep_fn=time.sleep.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import time
+import uuid
+from typing import Callable
+
+from core.cache import SnapshotCache
+from core.providers.base import BaseProvider
+
+
+# ---------------------------------------------------------------------------
+# Single poll cycle
+# ---------------------------------------------------------------------------
+
+def poll_once(provider: BaseProvider, cache: SnapshotCache) -> list[dict]:
+    """
+    Perform one poll cycle.
+
+    Calls provider.get_live_scores(), serialises the FixtureDTOs to plain dicts,
+    stores them under cache key "live_scores", and returns the list written.
+    Does NOT sleep or loop.
+    """
+    dtos = provider.get_live_scores()
+    payload = [dataclasses.asdict(dto) for dto in dtos]
+    cache.set_snapshot("live_scores", payload)
+    return payload
+
+
+# ---------------------------------------------------------------------------
+# Leader lock helpers
+# ---------------------------------------------------------------------------
+
+def acquire_leadership(
+    redis_client,
+    lease_ttl: int = 30,
+    key: str = "poller:leader",
+    token: str | None = None,
+) -> bool:
+    """
+    Attempt to acquire the leader lease.
+
+    Uses atomic SET key token NX EX lease_ttl.  Returns True if this caller
+    acquired the lock, False if another holder already holds it.
+
+    Parameters
+    ----------
+    redis_client:
+        Any redis-compatible client.
+    lease_ttl:
+        Key TTL in seconds; on crash the key auto-expires so another process
+        can take over.
+    key:
+        Redis key used for the lock.
+    token:
+        Unique identifier for this caller.  If None, a uuid4 hex string is
+        generated.  Pass explicitly in tests for determinism.
+    """
+    if token is None:
+        token = uuid.uuid4().hex
+    result = redis_client.set(key, token, nx=True, ex=lease_ttl)
+    # redis-py returns True on success, None on NX-fail
+    return result is True
+
+
+def renew_leadership(
+    redis_client,
+    token: str,
+    lease_ttl: int = 30,
+    key: str = "poller:leader",
+) -> bool:
+    """
+    Refresh the leader lease only if we still hold it.
+
+    GET key — if the stored value equals our token, re-SET with a fresh expiry
+    and return True.  If the key is missing or held by another token, return False.
+
+    NOTE: There is a tiny GET-then-SET race: if the key expires between the GET
+    and the SET, a competing process could win the key in that window and our
+    subsequent SET would silently overwrite their lease.  For the MVP (single
+    host, single poller) this is acceptable; a Lua CAS script would eliminate
+    the race.
+    """
+    current = redis_client.get(key)
+    if current is None:
+        return False
+    # fakeredis and redis-py both return bytes; decode for comparison
+    if isinstance(current, bytes):
+        current = current.decode()
+    if current != token:
+        return False
+    redis_client.set(key, token, ex=lease_ttl)
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Control loop
+# ---------------------------------------------------------------------------
+
+def run_loop(
+    provider: BaseProvider,
+    cache: SnapshotCache,
+    redis_client,
+    token: str,
+    interval: int = 20,
+    max_cycles: int | None = None,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> None:
+    """
+    Main poller loop: while leader, poll once then sleep(interval).
+
+    Parameters
+    ----------
+    provider:
+        Data source; get_live_scores() is called each cycle.
+    cache:
+        SnapshotCache where results are written.
+    redis_client:
+        Redis client used for leader-lock operations.
+    token:
+        This process's unique leader-lock token.
+    interval:
+        Seconds to sleep between cycles.
+    max_cycles:
+        If None, loop forever (production mode).
+        If set to an integer N, exit after exactly N cycles (test mode).
+    sleep_fn:
+        Injectable sleep callable — pass ``lambda s: None`` in tests.
+    """
+    cycle = 0
+    # Acquire leadership on first entry
+    is_leader = acquire_leadership(redis_client, token=token)
+    if not is_leader:
+        return  # Another poller already holds the lock; exit immediately.
+
+    while True:
+        poll_once(provider, cache)
+        sleep_fn(interval)
+
+        cycle += 1
+        if max_cycles is not None and cycle >= max_cycles:
+            break
+
+        # Renew before next cycle; exit loop if we lose leadership
+        if not renew_leadership(redis_client, token=token):
+            break

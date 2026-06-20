@@ -135,3 +135,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 PROVIDER = os.environ.get('PROVIDER', 'mock')
 API_FOOTBALL_KEY = os.environ.get('API_FOOTBALL_KEY', '')
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+POLL_INTERVAL = int(os.environ.get('POLL_INTERVAL', '20'))
