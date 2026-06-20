@@ -1,0 +1,272 @@
+/* MatchCenter styles */
+
+.mc-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Header */
+.mc-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mc-back-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+  text-align: left;
+  width: fit-content;
+}
+.mc-back-btn:hover { color: var(--text); }
+
+.mc-scoreline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mc-team {
+  font-size: 0.95rem;
+  font-weight: 600;
+  flex: 1;
+}
+.mc-team--home { text-align: right; }
+.mc-team--away { text-align: left; }
+
+.mc-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.mc-score {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.mc-minute {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.mc-header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.mc-league { color: var(--muted); }
+
+.mc-loading {
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+/* Tabs */
+.mc-tabs {
+  display: flex;
+  overflow-x: auto;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+.mc-tabs::-webkit-scrollbar { display: none; }
+
+.mc-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.65rem 1.25rem;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.mc-tab:hover { color: var(--text); }
+.mc-tab--active {
+  color: var(--text);
+  border-bottom-color: var(--live);
+}
+
+.mc-tab-content {
+  flex: 1;
+  padding: 0.75rem 1rem;
+}
+
+/* Momentum strip */
+.momentum-strip {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+.momentum-strip--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+}
+.momentum-skeleton-text {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.momentum-caption {
+  margin-top: 4px;
+}
+
+/* Summary / event timeline */
+.mc-summary-tab {}
+
+.mc-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mc-timeline-header {
+  display: flex;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.mc-tl-team-label { flex: 1; }
+.mc-tl-team-label--home { text-align: right; padding-right: 1rem; }
+.mc-tl-team-label--away { text-align: left; padding-left: 1rem; }
+.mc-tl-spine-label { width: 3rem; flex-shrink: 0; }
+
+.mc-no-events {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+/* Event rows — 3-column: home content | spine | away content */
+.mc-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 3px 0;
+}
+
+.mc-event-spine {
+  width: 3rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.mc-event-minute {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.mc-event-icon {
+  font-size: 0.9rem;
+}
+
+.mc-event-content {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+.mc-event-content--home { justify-content: flex-end; text-align: right; }
+.mc-event-content--away { justify-content: flex-start; text-align: left; }
+
+.mc-event-player { font-weight: 500; }
+.mc-event-assist { color: var(--muted); font-size: 0.75rem; }
+
+/* Lineups */
+.mc-lineups-tab { padding: 0.5rem 0; }
+.mc-lineups-columns {
+  display: flex;
+  gap: 1rem;
+}
+.mc-lineup-col {
+  flex: 1;
+}
+.mc-lineup-col-header {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.mc-lineup-list {
+  list-style: decimal;
+  padding-left: 1.2rem;
+  margin: 0;
+}
+.mc-lineup-player {
+  padding: 2px 0;
+  font-size: 0.82rem;
+}
+
+/* Stats */
+.mc-stats-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0.5rem 0;
+}
+.mc-stat-row {}
+.mc-stat-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.mc-stat-bars {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mc-stat-val {
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: 2.5rem;
+  flex-shrink: 0;
+}
+.mc-stat-val--home { text-align: right; color: var(--home); }
+.mc-stat-val--away { text-align: left; color: var(--away); }
+.mc-stat-track {
+  flex: 1;
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--border);
+}
+.mc-stat-fill { height: 100%; }
+
+/* Unavailable state */
+.mc-unavailable {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 2rem 0;
+  text-align: center;
+}
