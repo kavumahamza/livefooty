@@ -1,8 +1,8 @@
 /* LiveScoreList — wraps live fixtures with a header + badge */
 
 .lsl-root {
-  max-width: 680px;
-  margin: 0 auto;
+  /* max-width / centering: inherited from .app-content wrapper in App.jsx */
+  width: 100%;
 }
 
 .lsl-header {

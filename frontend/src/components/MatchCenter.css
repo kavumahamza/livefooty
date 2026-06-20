@@ -1,65 +1,82 @@
-/* MatchCenter styles */
+/* MatchCenter styles — mobile-first, responsive */
 
 .mc-root {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: calc(100dvh - 48px); /* subtract app-header height */
   background: var(--bg);
   color: var(--text);
+  /* max-width is enforced by .app-content wrapper in App.jsx */
+  width: 100%;
 }
 
-/* Header */
+/* ── Header ───────────────────────────────────────────────── */
 .mc-header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
-.mc-back-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.85rem;
-  padding: 0;
-  text-align: left;
-  width: fit-content;
-}
-.mc-back-btn:hover { color: var(--text); }
+/*
+ * mc-back-btn base styles live in App.css (shell-level navigation polish).
+ * Defined there so the rule applies regardless of CSS load order.
+ * Additional context-specific tweaks below if needed.
+ */
 
 .mc-scoreline {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  padding: 0.25rem 0;
 }
 
 .mc-team {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   flex: 1;
+  /* Truncate gracefully on narrow screens instead of wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0; /* critical: allow flex shrink + ellipsis */
 }
 .mc-team--home { text-align: right; }
 .mc-team--away { text-align: left; }
+
+/* At ≥480px show larger team names */
+@media (min-width: 480px) {
+  .mc-team {
+    font-size: 1rem;
+  }
+}
 
 .mc-score-block {
   display: flex;
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
+  min-width: 80px;
 }
 
 .mc-score {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+@media (min-width: 480px) {
+  .mc-score {
+    font-size: 1.8rem;
+  }
 }
 
 .mc-minute {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 500;
 }
 
@@ -79,46 +96,86 @@
   padding: 0.5rem 0;
 }
 
-/* Tabs */
+/* ── Tab strip ────────────────────────────────────────────── */
 .mc-tabs {
   display: flex;
   overflow-x: auto;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   scrollbar-width: none;
+  /* Sticky under app-header (48px) — tabs stay visible while scrolling content */
+  position: sticky;
+  top: 48px;
+  z-index: 20;
 }
 .mc-tabs::-webkit-scrollbar { display: none; }
 
+/*
+ * Tab buttons: min 44px height (Apple HIG touch target).
+ * white-space: nowrap ensures horizontal scroll rather than wrapping.
+ */
 .mc-tab {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  padding: 0.65rem 1.25rem;
+  /* ≥44px tap target */
+  min-height: 44px;
+  padding: 0 1.25rem;
   white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.mc-tab:hover { color: var(--text); }
+
+.mc-tab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.mc-tab:active {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
 .mc-tab--active {
   color: var(--text);
   border-bottom-color: var(--live);
 }
 
-.mc-tab-content {
-  flex: 1;
-  padding: 0.75rem 1rem;
+.mc-tab:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: -2px;
 }
 
-/* Momentum strip */
+.mc-tab-content {
+  flex: 1;
+  padding: 0.75rem;
+}
+
+@media (min-width: 480px) {
+  .mc-tab-content {
+    padding: 1rem;
+  }
+}
+
+/* ── Momentum strip ───────────────────────────────────────── */
+/*
+ * momentum-chart uses flex bars that are already fluid (flex:1 per bar).
+ * Wrapping .momentum-strip in overflow:hidden prevents any bar from escaping
+ * the container at narrow widths.
+ */
 .momentum-strip {
   margin-bottom: 1rem;
   padding: 0.5rem;
   background: var(--surface);
   border-radius: var(--radius);
+  overflow: hidden; /* contain fluid bars */
 }
+
 .momentum-strip--loading {
   display: flex;
   align-items: center;
@@ -133,7 +190,13 @@
   margin-top: 4px;
 }
 
-/* Summary / event timeline */
+/* Ensure the chart itself never forces horizontal scroll */
+.momentum-chart {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ── Summary / event timeline ─────────────────────────────── */
 .mc-summary-tab {}
 
 .mc-timeline {
@@ -148,9 +211,21 @@
   color: var(--muted);
   margin-bottom: 4px;
 }
-.mc-tl-team-label { flex: 1; }
-.mc-tl-team-label--home { text-align: right; padding-right: 1rem; }
-.mc-tl-team-label--away { text-align: left; padding-left: 1rem; }
+.mc-tl-team-label { flex: 1; min-width: 0; }
+.mc-tl-team-label--home {
+  text-align: right;
+  padding-right: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mc-tl-team-label--away {
+  text-align: left;
+  padding-left: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .mc-tl-spine-label { width: 3rem; flex-shrink: 0; }
 
 .mc-no-events {
@@ -187,6 +262,7 @@
 
 .mc-event-content {
   flex: 1;
+  min-width: 0; /* allow shrink + ellipsis */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -196,10 +272,15 @@
 .mc-event-content--home { justify-content: flex-end; text-align: right; }
 .mc-event-content--away { justify-content: flex-start; text-align: left; }
 
-.mc-event-player { font-weight: 500; }
+.mc-event-player {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .mc-event-assist { color: var(--muted); font-size: 0.75rem; }
 
-/* Lineups */
+/* ── Lineups ──────────────────────────────────────────────── */
 .mc-lineups-tab { padding: 0.5rem 0; }
 .mc-lineups-columns {
   display: flex;
@@ -207,6 +288,7 @@
 }
 .mc-lineup-col {
   flex: 1;
+  min-width: 0; /* allow shrink */
 }
 .mc-lineup-col-header {
   font-size: 0.78rem;
@@ -224,9 +306,12 @@
 .mc-lineup-player {
   padding: 2px 0;
   font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Stats */
+/* ── Stats ────────────────────────────────────────────────── */
 .mc-stats-tab {
   display: flex;
   flex-direction: column;
@@ -260,10 +345,11 @@
   border-radius: 3px;
   overflow: hidden;
   background: var(--border);
+  min-width: 0; /* allow fluid shrink */
 }
 .mc-stat-fill { height: 100%; }
 
-/* Unavailable state */
+/* ── Unavailable state ────────────────────────────────────── */
 .mc-unavailable {
   color: var(--muted);
   font-size: 0.85rem;
