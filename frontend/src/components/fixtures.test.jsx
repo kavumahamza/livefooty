@@ -9,6 +9,7 @@ describe('isLive', () => {
   it('returns true for HT', () => expect(isLive('HT')).toBe(true));
   it('returns true for 2H', () => expect(isLive('2H')).toBe(true));
   it('returns true for ET (extra time)', () => expect(isLive('ET')).toBe(true));
+  it('returns true for SUSP (suspended mid-match)', () => expect(isLive('SUSP')).toBe(true));
 
   it('returns false for FT', () => expect(isLive('FT')).toBe(false));
   it('returns false for NS', () => expect(isLive('NS')).toBe(false));
@@ -46,22 +47,24 @@ describe('formatRowTime', () => {
     expect(formatRowTime({ status: 'ABD', minute: null, kickoff_utc: null })).toBe('ABD');
   });
 
-  it('returns HH:MM for NS match with kickoff_utc', () => {
-    const result = formatRowTime({
-      status: 'NS',
-      minute: null,
-      kickoff_utc: '2026-06-20T19:45:00Z',
-    });
-    expect(result).toBe('19:45');
+  it('returns HH:MM (local time) for NS match with kickoff_utc', () => {
+    const iso = '2026-06-20T19:45:00Z';
+    const expected =
+      String(new Date(iso).getHours()).padStart(2, '0') +
+      ':' +
+      String(new Date(iso).getMinutes()).padStart(2, '0');
+    const result = formatRowTime({ status: 'NS', minute: null, kickoff_utc: iso });
+    expect(result).toBe(expected);
   });
 
-  it('returns HH:MM for NS match with non-zero hours', () => {
-    const result = formatRowTime({
-      status: 'NS',
-      minute: null,
-      kickoff_utc: '2026-06-20T08:00:00Z',
-    });
-    expect(result).toBe('08:00');
+  it('returns HH:MM (local time) for NS match with non-zero hours', () => {
+    const iso = '2026-06-20T08:00:00Z';
+    const expected =
+      String(new Date(iso).getHours()).padStart(2, '0') +
+      ':' +
+      String(new Date(iso).getMinutes()).padStart(2, '0');
+    const result = formatRowTime({ status: 'NS', minute: null, kickoff_utc: iso });
+    expect(result).toBe(expected);
   });
 });
 

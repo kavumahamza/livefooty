@@ -4,7 +4,7 @@
  */
 
 /** Statuses that indicate an in-play match. */
-const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'INT', 'LIVE']);
+const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'INT', 'LIVE', 'SUSP']);
 
 /** Statuses that are definitively finished / postponed / abandoned (not live). */
 const DONE_STATUSES = new Set(['FT', 'AET', 'PEN', 'ABD', 'PST', 'CANC', 'NS', 'TBD', 'WO', 'AWD']);
@@ -43,8 +43,8 @@ export function formatRowTime(fixture) {
   if (kickoff_utc) {
     try {
       const d = new Date(kickoff_utc);
-      const hh = String(d.getUTCHours()).padStart(2, '0');
-      const mm = String(d.getUTCMinutes()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
       return `${hh}:${mm}`;
     } catch {
       // fall through
