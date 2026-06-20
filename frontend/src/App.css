@@ -1,9 +1,5 @@
 /* ── App shell ──────────────────────────────────────────── */
 
-/*
- * app-shell — outermost container wrapping both home view and MatchCenter.
- * Full-height, dark background from theme tokens.
- */
 .app-shell {
   min-height: 100dvh;
   background: var(--bg);
@@ -12,39 +8,78 @@
   flex-direction: column;
 }
 
-/* ── Global sticky header ───────────────────────────────── */
+/* ── Broadcast brand header ─────────────────────────────── */
 /*
- * 48px tall (≥44px Apple HIG touch target height for the logo/home area).
- * Sticky at z-index 30 so it sits above filter bars (z-index 10).
+ * 52px — generous for the wordmark, still ≥44px Apple HIG tap height
+ * for any interactive element inside. Sticky at z-index 30.
  */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 0.75rem;
-  height: 48px;
-  min-height: 48px;
+  padding: 0 0.875rem;
+  height: 52px;
+  min-height: 52px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   position: sticky;
   top: 0;
   z-index: 30;
   flex-shrink: 0;
 }
 
-.app-logo {
-  font-size: 15px;
+/* Wordmark lockup */
+.app-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  user-select: none;
+}
+
+.app-wordmark-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.app-wordmark-text {
+  font-size: 14px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* Neon-lime accent on the "LIVE" portion via a gradient */
+  background: linear-gradient(
+    90deg,
+    var(--live) 0%,
+    color-mix(in srgb, var(--live) 60%, var(--text)) 40%,
+    var(--text) 70%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Live status pill in header */
+.app-header-live {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
   font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--live);
+  opacity: 0.85;
 }
 
 /* ── Centered content column ────────────────────────────── */
 /*
- * Phone (≤639px)   : full width, edge-to-edge
- * Tablet (≥640px)  : centered, max-width 680px
- * Desktop (≥1280px): same max-width column — list stays dense and readable,
- *                    not stretched to 1920px
+ * 360px  : full width, no horizontal scroll
+ * 768px  : centered, max-width 680px, breathing room
+ * 1280px : same max-width — not stretched to edge
  */
 .app-content {
   flex: 1;
@@ -55,43 +90,68 @@
   flex-direction: column;
 }
 
+/* ── View transition (home ↔ match center) ──────────────── */
+/*
+ * CSS-only fade + subtle slide. Reduced-motion: fade only (no slide).
+ * Both views use .app-view — the entering view fades in from below.
+ */
+.app-view {
+  animation: view-enter 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-view {
+    animation: view-enter-reduced 0.18s ease both;
+  }
+
+  @keyframes view-enter-reduced {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+}
+
 /* ── Home view: section divider + label ─────────────────── */
 .app-section-divider {
   height: 1px;
   background: var(--border);
-  margin: 0.5rem 0.75rem;
-  opacity: 0.5;
+  margin: 0.25rem 0.75rem;
+  opacity: 0.45;
 }
 
 .app-section-label {
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   color: var(--muted);
-  padding: 0.4rem 0.75rem 0.2rem;
+  padding: 0.35rem 0.75rem 0.15rem;
 }
 
 /* ── Back button in MatchCenter header ──────────────────── */
-/*
- * Minimum 44×44px tap target (Apple HIG).
- * Rendered inside .mc-header from MatchCenter.css; this rule lives here
- * because it's part of the app-shell navigation polish.
- */
 .mc-back-btn {
   background: none;
   border: none;
   color: var(--muted);
   cursor: pointer;
   font-size: 0.875rem;
-  /* Ensure ≥44px tap target with padding */
   min-height: 44px;
   min-width: 44px;
   padding: 0 0.5rem;
   display: inline-flex;
   align-items: center;
   text-align: left;
-  border-radius: var(--radius);
+  border-radius: var(--r-sm);
   transition: color 0.15s, background 0.15s;
 }
 
@@ -105,7 +165,14 @@
   outline-offset: 2px;
 }
 
-/* ── Legacy Vite scaffold classes (unused in MVP, kept so import won't error) */
+/* ── Responsive: more breathing room on tablet+ ─────────── */
+@media (min-width: 640px) {
+  .app-content {
+    padding: 0;
+  }
+}
+
+/* ── Legacy scaffold (unused, kept so import won't error) ── */
 .counter {
   font-size: 16px;
   padding: 5px 10px;

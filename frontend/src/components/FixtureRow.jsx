@@ -1,11 +1,11 @@
 /**
- * FixtureRow — reusable dense fixture row.
+ * FixtureRow — refined dense glass list-item row.
  *
  * Props:
  *   fixture   {object}    — FixtureDTO shape
  *   onSelect  {function}  — called with fixture.id on click/Enter/Space
  *
- * Layout: time · home · score · away · live-dot
+ * Layout: home (crest + name) · score+time block · away (name + crest)
  * Uses CSS classes from FixturesBrowser.css so the visual is identical
  * whether rendered inside FixturesBrowser or LiveScoreList.
  */
@@ -20,10 +20,6 @@ function scoreStr(home, away, status) {
   return `${home} : ${away}`;
 }
 
-function LiveDot() {
-  return <span className="fbr-live-dot" aria-hidden="true" title="Live" />;
-}
-
 export function FixtureRow({ fixture, onSelect }) {
   const live = isLive(fixture.status);
   const timeLabel = formatRowTime(fixture);
@@ -35,21 +31,32 @@ export function FixtureRow({ fixture, onSelect }) {
       aria-label={`${fixture.home} vs ${fixture.away}, ${timeLabel}`}
       type="button"
     >
-      <span className={`fbr-time${live ? ' fbr-time--live' : ''}`}>
-        {timeLabel}
-      </span>
+      {/* Home team */}
       <span className="fbr-home">
         <TeamCrest name={fixture.home} logo={fixture.home_logo} size={18} />
-        {fixture.home}
+        <span className="fbr-team-name">{fixture.home}</span>
       </span>
-      <span className="fbr-score">
-        {scoreStr(fixture.home_score, fixture.away_score, fixture.status)}
+
+      {/* Central score + time block */}
+      <span className="fbr-score-block">
+        <span className="fbr-score tabular">
+          {scoreStr(fixture.home_score, fixture.away_score, fixture.status)}
+        </span>
+        {live ? (
+          <span className="fbr-minute">
+            <span className="live-dot" aria-hidden="true" />
+            <span className="fbr-minute-text">{timeLabel}</span>
+          </span>
+        ) : (
+          <span className="fbr-kickoff">{timeLabel}</span>
+        )}
       </span>
+
+      {/* Away team */}
       <span className="fbr-away">
+        <span className="fbr-team-name fbr-team-name--away">{fixture.away}</span>
         <TeamCrest name={fixture.away} logo={fixture.away_logo} size={18} />
-        {fixture.away}
       </span>
-      {live && <LiveDot />}
     </button>
   );
 }

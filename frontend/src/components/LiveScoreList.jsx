@@ -12,6 +12,7 @@ import { usePoll } from '../api/poll.js';
 import { isLive } from './fixtures.js';
 import { FixtureRow } from './FixtureRow.jsx';
 import { StaleBadge } from './StaleBadge.jsx';
+import { Skeleton } from './Skeleton.jsx';
 import './FixturesBrowser.css';  // reuse shared row / league-section CSS
 import './StaleBadge.css';
 import './LiveScoreList.css';
@@ -73,12 +74,28 @@ export function LiveScoreList({ onSelectMatch }) {
   return (
     <div className="lsl-root">
       <div className="lsl-header">
-        <span className="lsl-title">Live Now</span>
+        <span className="lsl-title-group">
+          <span className="live-dot" aria-hidden="true" />
+          <span className="lsl-title">Live Now</span>
+          {liveFixtures.length > 0 && (
+            <span className="lsl-count">{liveFixtures.length}</span>
+          )}
+        </span>
         <StaleBadge ageSeconds={ageSeconds} error={error} intervalMs={POLL_INTERVAL} />
       </div>
 
       {isWarming && (
-        <p className="lsl-empty">warming up…</p>
+        <div className="lsl-skeleton-rows" aria-label="Loading live matches" aria-busy="true">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="lsl-skeleton-row">
+              <Skeleton width={22} height={22} radius="50%" />
+              <Skeleton width="30%" height={13} />
+              <Skeleton width={52} height={16} />
+              <Skeleton width="30%" height={13} />
+              <Skeleton width={22} height={22} radius="50%" />
+            </div>
+          ))}
+        </div>
       )}
 
       {isEmpty && !error && (

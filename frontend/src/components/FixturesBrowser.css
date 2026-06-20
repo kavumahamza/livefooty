@@ -1,52 +1,63 @@
-/* FixturesBrowser — FlashScore-dense layout, dark theme */
+/* FixturesBrowser — Broadcast Night glass list design */
 
+/* ── Root ───────────────────────────────────────────────── */
 .fbr-root {
-  /* max-width / centering: inherited from .app-content wrapper in App.jsx */
   padding: 0 0 2rem;
   width: 100%;
 }
 
-/* ── Filters ────────────────────────────────────────────── */
+/* ── Filter controls ────────────────────────────────────── */
 .fbr-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  padding: 0.75rem 0.75rem 0.5rem;
+  padding: 0.75rem 0.75rem 0.6rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  position: sticky;
   /* Sit just below the 48px app-header */
-  top: 48px;
+  position: sticky;
+  top: 52px;
   z-index: 10;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .fbr-filter-label {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   flex: 1 1 120px;
 }
 
 .fbr-filter-text {
   font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--muted);
 }
 
 .fbr-input {
-  background: var(--bg);
+  background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--r-sm);
   color: var(--text);
-  padding: 0.35rem 0.5rem;
+  padding: 0.4rem 0.6rem;
   font-size: 13px;
+  font-family: var(--font-body);
   outline: none;
   width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-height: 38px;
 }
 
 .fbr-input:focus {
   border-color: var(--live);
+  box-shadow: 0 0 0 2px var(--live-glow);
+}
+
+.fbr-input[type="date"] {
+  color-scheme: dark;
 }
 
 /* ── Status bar ─────────────────────────────────────────── */
@@ -62,16 +73,30 @@
   color: var(--muted);
 }
 
-.fbr-error {
-  color: var(--away);
-}
-
 /* ── Empty states ───────────────────────────────────────── */
 .fbr-empty {
   color: var(--muted);
   text-align: center;
   padding: 2rem 1rem;
   font-size: 13px;
+  margin: 0;
+}
+
+/* ── Skeleton loading rows ──────────────────────────────── */
+.fbr-skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.fbr-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.75rem;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 /* ── League section ─────────────────────────────────────── */
@@ -79,53 +104,63 @@
   margin-bottom: 0;
 }
 
+/* Glass bar league header */
 .fbr-league-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.75rem;
+  gap: 6px;
+  padding: 0.35rem 0.75rem;
   background: var(--surface-2);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .fbr-league-header--live {
-  background: color-mix(in srgb, var(--live) 12%, var(--surface-2));
-  border-color: color-mix(in srgb, var(--live) 30%, var(--border));
+  background: color-mix(in srgb, var(--live) 10%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--live) 28%, var(--border));
 }
 
 .fbr-league-name {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--muted);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fbr-league-id {
   font-size: 10px;
   color: var(--border);
+  flex-shrink: 0;
 }
 
 .fbr-live-badge {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--live);
+  text-shadow: 0 0 8px var(--live-glow);
 }
 
 .fbr-league-rows {
-  /* no gap — rows are flush */
+  /* rows are flush */
 }
 
-/* ── Fixture row ────────────────────────────────────────── */
+/* ── Fixture row — glass list item ──────────────────────── */
 .fbr-row {
   display: grid;
-  grid-template-columns: 42px 1fr auto 1fr 14px;
+  /* home | score-block | away */
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 0.4rem;
-  /* min-height ≥44px ensures Apple HIG touch target */
+  gap: 0.5rem;
   min-height: 44px;
   padding: 0 0.75rem;
   background: var(--surface);
@@ -136,114 +171,136 @@
   text-align: left;
   color: var(--text);
   font-size: 13px;
-  transition: background 0.1s;
+  font-family: var(--font-body);
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  position: relative;
 }
 
-.fbr-row:hover,
-.fbr-row:focus-visible {
+.fbr-row:hover {
   background: var(--surface-2);
-  outline: none;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  border-color: color-mix(in srgb, var(--border) 60%, var(--live) 40%);
+  z-index: 1;
+}
+
+.fbr-row:active {
+  transform: translateY(0);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--live) 10%);
 }
 
 .fbr-row:focus-visible {
   outline: 2px solid var(--live);
   outline-offset: -2px;
+  background: var(--surface-2);
+  z-index: 1;
 }
 
 .fbr-row--live {
-  /* slight tint */
   background: color-mix(in srgb, var(--live) 4%, var(--surface));
 }
 
-.fbr-row--live:hover,
-.fbr-row--live:focus-visible {
+.fbr-row--live:hover {
   background: color-mix(in srgb, var(--live) 8%, var(--surface-2));
 }
 
-/* ── Row cells ──────────────────────────────────────────── */
-.fbr-time {
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  white-space: nowrap;
-  text-align: right;
-}
-
-.fbr-time--live {
-  color: var(--live);
-  font-weight: 600;
-}
-
+/* ── Team cells ─────────────────────────────────────────── */
 .fbr-home {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text);
-}
-
-.fbr-score {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 13px;
-  white-space: nowrap;
-  text-align: center;
-  min-width: 50px;
-  color: var(--text);
+  gap: 6px;
+  min-width: 0;
+  justify-content: flex-start;
 }
 
 .fbr-away {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.fbr-team-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  font-weight: 500;
   color: var(--text);
+  flex: 1 1 0;
 }
 
-/* ── Live dot ───────────────────────────────────────────── */
-.fbr-live-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--live);
-  animation: fbr-pulse 1.4s ease-in-out infinite;
+.fbr-team-name--away {
+  text-align: right;
+}
+
+/* ── Score block ────────────────────────────────────────── */
+.fbr-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
   flex-shrink: 0;
+  min-width: 56px;
 }
 
-@keyframes fbr-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+.fbr-score {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  color: var(--text);
+  letter-spacing: 0.02em;
 }
 
-/* ── Mobile tweaks ──────────────────────────────────────── */
-@media (max-width: 400px) {
+.fbr-kickoff {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.fbr-minute {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fbr-minute-text {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--live);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-shadow: 0 0 6px var(--live-glow);
+}
+
+/* ── Mobile ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
   .fbr-row {
-    grid-template-columns: 38px 1fr auto 1fr 10px;
-    gap: 0.25rem;
+    gap: 0.35rem;
     padding: 0 0.5rem;
     font-size: 12px;
-    /* Still honour 44px touch target */
     min-height: 44px;
   }
 
+  .fbr-score-block {
+    min-width: 46px;
+  }
+
   .fbr-score {
-    min-width: 40px;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .fbr-filters {
     padding: 0.5rem;
-    gap: 0.4rem;
+    gap: 0.35rem;
+    top: 52px;
   }
-}
 
-/* ── fbr-root: no explicit width needed — app-content wrapper constrains it */
-.fbr-root {
-  /* max-width and centering handled by .app-content in App.css */
+  .fbr-input {
+    font-size: 12px;
+    padding: 0.35rem 0.45rem;
+  }
 }

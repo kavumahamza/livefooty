@@ -7,17 +7,24 @@ import './App.css'
 function App() {
   const [selectedMatchId, setSelectedMatchId] = useState(null)
 
-  // Full-page swap: when a match is selected, show MatchCenter instead of home view.
-  // Both views share the sticky app-header for consistent branding.
+  // Full-page swap: when a match is selected, show MatchCenter.
+  // Both views share the sticky broadcast header.
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="app-logo">⚽ LiveFooty</span>
+        <span className="app-wordmark" role="img" aria-label="LiveFooty home">
+          <span className="app-wordmark-icon" aria-hidden="true">&#x26BD;</span>
+          <span className="app-wordmark-text">LiveFooty</span>
+        </span>
+        <span className="app-header-live" aria-hidden="true">
+          <span className="live-dot" />
+          Live
+        </span>
       </header>
 
       {selectedMatchId != null ? (
         /* ── Match Center view ── */
-        <div className="app-content">
+        <div className="app-content app-view">
           <MatchCenter
             fixtureId={selectedMatchId}
             onBack={() => setSelectedMatchId(null)}
@@ -25,7 +32,7 @@ function App() {
         </div>
       ) : (
         /* ── Home view ── */
-        <div className="app-content">
+        <div className="app-content app-view">
           {/* Live Now section — polls /api/live every 20s */}
           <LiveScoreList onSelectMatch={setSelectedMatchId} />
 

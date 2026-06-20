@@ -3,6 +3,7 @@ import { usePoll } from '../api/poll.js';
 import { groupFixtures } from './fixtures.js';
 import { FixtureRow } from './FixtureRow.jsx';
 import { StaleBadge } from './StaleBadge.jsx';
+import { Skeleton } from './Skeleton.jsx';
 import './FixturesBrowser.css';
 import './StaleBadge.css';
 
@@ -76,7 +77,9 @@ export function FixturesBrowser({ onSelectMatch }) {
 
   const fixtures = data?.fixtures ?? [];
   const ageSeconds = data?.age_seconds ?? null;
-  const isColdCache = Array.isArray(fixtures) && fixtures.length === 0 && ageSeconds == null;
+  // firstLoad: no data AND no error yet — show skeletons
+  const firstLoad = data == null && !error;
+  const isColdCache = !firstLoad && Array.isArray(fixtures) && fixtures.length === 0 && ageSeconds == null;
 
   const { live: liveFixtures, leagues } = useMemo(
     () => groupFixtures(fixtures),
@@ -151,12 +154,27 @@ export function FixturesBrowser({ onSelectMatch }) {
         )}
       </div>
 
-      {/* Cold-cache / empty states */}
-      {isColdCache && !loading && !error && (
+      {/* Skeleton loading rows — first load before any data arrives */}
+      {firstLoad && (
+        <div className="fbr-skeleton-rows" aria-label="Loading fixtures" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="fbr-skeleton-row">
+              <Skeleton width={22} height={22} radius="50%" />
+              <Skeleton width="35%" height={13} />
+              <Skeleton width={52} height={16} />
+              <Skeleton width="35%" height={13} />
+              <Skeleton width={22} height={22} radius="50%" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cold-cache / empty states — only after data has arrived */}
+      {!firstLoad && isColdCache && !error && (
         <p className="fbr-empty">Loading live data…</p>
       )}
-      {!isColdCache && !loading && fixtures.length === 0 && !error && (
-        <p className="fbr-empty">No matches found for these filters.</p>
+      {!firstLoad && !isColdCache && fixtures.length === 0 && !error && (
+        <p className="fbr-empty">No matches found.</p>
       )}
 
       {/* Live section — surfaced at the top across all leagues */}

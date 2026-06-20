@@ -1,31 +1,68 @@
-/* LiveScoreList — wraps live fixtures with a header + badge */
+/* LiveScoreList — "LIVE NOW" broadcast section */
 
 .lsl-root {
-  /* max-width / centering: inherited from .app-content wrapper in App.jsx */
   width: 100%;
 }
 
+/* ── Section header ─────────────────────────────────────── */
 .lsl-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.75rem 0.4rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid color-mix(in srgb, var(--live) 25%, var(--border));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.lsl-title-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
 }
 
 .lsl-title {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--live);
+  text-shadow: 0 0 10px var(--live-glow);
 }
 
+.lsl-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Empty / warming states ─────────────────────────────── */
 .lsl-empty {
   color: var(--muted);
   text-align: center;
-  padding: 1.5rem 1rem;
+  padding: 1.25rem 1rem;
   font-size: 13px;
   margin: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Skeleton rows ──────────────────────────────────────── */
+.lsl-skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.lsl-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.75rem;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--live) 3%, var(--surface));
 }
