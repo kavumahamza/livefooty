@@ -56,7 +56,8 @@ export function MomentumStrip({ momentum }) {
           }}
         >
           {buckets.map((bucket, i) => {
-            const geo = barGeometry(bucket.value, HALF_HEIGHT - 2);
+            const safeValue = bucket.value ?? 0;
+            const geo = barGeometry(safeValue, HALF_HEIGHT - 2);
             const isUp = geo.direction === 'up';
             const isDown = geo.direction === 'down';
             const noBar = geo.direction === 'none';
@@ -65,7 +66,7 @@ export function MomentumStrip({ momentum }) {
               <div
                 key={bucket.minute ?? i}
                 className="momentum-bar-wrapper"
-                title={`${bucket.minute}' : ${bucket.value > 0 ? '+' : ''}${bucket.value.toFixed(2)}`}
+                title={`${bucket.minute}' : ${safeValue > 0 ? '+' : ''}${safeValue.toFixed(2)}`}
                 style={{
                   flex: 1,
                   height: '100%',

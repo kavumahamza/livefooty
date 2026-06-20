@@ -80,7 +80,7 @@ const TABS = ['Summary', 'Lineups', 'Stats'];
 
 function TabStrip({ active, onSelect }) {
   return (
-    <div className="mc-tabs" role="tablist">
+    <div className="mc-tabs" role="tablist" aria-label="Match sections">
       {TABS.map((tab) => (
         <button
           key={tab}
