@@ -165,6 +165,35 @@
   outline-offset: 2px;
 }
 
+/* ── Home layout: chip rail (mobile) → two-column (desktop) ── */
+/*
+ * Mobile/tablet (<1024px): CompetitionsNav renders as a horizontal chip rail
+ * above the stacked content column. Single column, no horizontal overflow.
+ *
+ * Desktop (>=1024px): side-by-side: CompetitionsNav sidebar (240px) left +
+ * .app-content (max 680px) right, whole shell centered.
+ */
+.app-home-layout {
+  display: flex;
+  flex-direction: column;   /* chip rail above content on mobile */
+  flex: 1;
+  min-height: 0;
+  /* prevent horizontal overflow on narrow viewports */
+  overflow-x: hidden;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .app-home-layout {
+    flex-direction: row;      /* sidebar left + content right */
+    align-items: flex-start;
+    /* center the whole two-column shell */
+    max-width: calc(240px + 680px + 2rem); /* sidebar + content + gap */
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
 /* ── Responsive: more breathing room on tablet+ ─────────── */
 @media (min-width: 640px) {
   .app-content {

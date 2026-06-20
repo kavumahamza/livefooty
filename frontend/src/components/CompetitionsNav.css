@@ -1,0 +1,199 @@
+/* ── CompetitionsNav ─────────────────────────────────────────────────────── */
+/*
+ * DESKTOP (>=1024px): vertical sidebar list, sticky, ~240px wide.
+ * MOBILE/TABLET (<1024px): horizontal scrollable chip rail, no page overflow.
+ */
+
+/* ── Shared base ── */
+.cnav-root {
+  /* Mobile/tablet: chip rail */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* prevent the nav itself from stretching the page */
+  max-width: 100%;
+  flex-shrink: 0;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+}
+
+.cnav-root::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Group headers — hidden on mobile (chip context), shown on desktop ── */
+.cnav-group-header {
+  display: none;
+}
+
+/* ── Base item (chip on mobile) ── */
+.cnav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  text-align: left;
+  /* ensure tap target ≥44px (total height accounting for surrounding padding) */
+}
+
+.cnav-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.cnav-item:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 2px;
+}
+
+/* Active state — neon-lime accent */
+.cnav-item--active {
+  border-color: var(--live);
+  background: color-mix(in srgb, var(--live) 12%, var(--surface));
+  color: var(--live);
+}
+
+.cnav-item--active .cnav-item-count {
+  color: var(--live);
+  opacity: 0.85;
+}
+
+/* "All matches" button */
+.cnav-item--all {
+  gap: 5px;
+}
+
+.cnav-all-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Logo img inside item */
+.cnav-logo {
+  border-radius: 2px;
+  object-fit: contain;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+/* Fixture count badge */
+.cnav-item-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  opacity: 0.7;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* Item name — truncate on desktop sidebar only */
+.cnav-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Skeleton list */
+.cnav-skeleton-list {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+/* ── Desktop sidebar (>=1024px) ─────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .cnav-root {
+    /* Switch to vertical list */
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: visible;
+    overflow-y: auto;
+    gap: 2px;
+    padding: 12px 8px;
+    background: transparent;
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+    /* sticky under the header — App sets top offset */
+    position: sticky;
+    top: 52px;           /* matches .app-header height */
+    max-height: calc(100dvh - 52px);
+    width: 240px;
+    min-width: 240px;
+    flex-shrink: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .cnav-root::-webkit-scrollbar {
+    display: initial;
+    width: 4px;
+  }
+  .cnav-root::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  /* Items become full-width sidebar rows */
+  .cnav-item {
+    width: 100%;
+    border-radius: var(--r-sm);
+    border-color: transparent;
+    background: transparent;
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .cnav-item:hover {
+    background: var(--surface);
+    border-color: transparent;
+  }
+
+  .cnav-item--active {
+    background: color-mix(in srgb, var(--live) 10%, var(--surface));
+    border-color: transparent;
+  }
+
+  /* Group headers visible on desktop */
+  .cnav-group-header {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--muted);
+    padding: 10px 10px 4px;
+    opacity: 0.7;
+    user-select: none;
+  }
+
+  /* Skeleton switches to vertical */
+  .cnav-skeleton-list {
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+  }
+}

@@ -1,14 +1,32 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { usePoll } from './api/poll.js'
+import { buildCompetitions } from './components/competitions.js'
 import { FixturesBrowser } from './components/FixturesBrowser.jsx'
 import { LiveScoreList } from './components/LiveScoreList.jsx'
 import { MatchCenter } from './components/MatchCenter.jsx'
+import { CompetitionsNav } from './components/CompetitionsNav.jsx'
 import './App.css'
 
 function App() {
   const [selectedMatchId, setSelectedMatchId] = useState(null)
+  const [selectedLeagueId, setSelectedLeagueId] = useState(null)
 
-  // Full-page swap: when a match is selected, show MatchCenter.
-  // Both views share the sticky broadcast header.
+  // Full (unfiltered) fixtures poll — used to build the competitions nav.
+  // Separate from FixturesBrowser's own filtered poll.
+  const { data: navData, loading: navLoading } = usePoll('/api/fixtures', 30000)
+
+  const competitions = useMemo(
+    () => buildCompetitions(navData?.fixtures),
+    [navData]
+  )
+
+  // Derive the selected league name for the section header
+  const selectedLeagueName = useMemo(() => {
+    if (selectedLeagueId == null) return null
+    const all = [...(competitions.featured), ...(competitions.others)]
+    return all.find((c) => c.league_id === selectedLeagueId)?.league ?? null
+  }, [selectedLeagueId, competitions])
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -23,7 +41,7 @@ function App() {
       </header>
 
       {selectedMatchId != null ? (
-        /* ── Match Center view ── */
+        /* ── Match Center view (no sidebar) ── */
         <div className="app-content app-view">
           <MatchCenter
             fixtureId={selectedMatchId}
@@ -31,15 +49,34 @@ function App() {
           />
         </div>
       ) : (
-        /* ── Home view ── */
-        <div className="app-content app-view">
-          {/* Live Now section — polls /api/live every 20s */}
-          <LiveScoreList onSelectMatch={setSelectedMatchId} />
+        /* ── Home view with competitions nav ── */
+        <div className="app-home-layout">
+          {/* Competitions nav: sidebar on desktop, chip rail on mobile */}
+          <CompetitionsNav
+            competitions={competitions}
+            selectedLeagueId={selectedLeagueId}
+            onSelect={setSelectedLeagueId}
+            loading={navLoading && navData == null}
+          />
 
-          <div className="app-section-divider" aria-hidden="true" />
+          {/* Main content column */}
+          <div className="app-content app-view">
+            {/* Live Now section — polls /api/live every 20s */}
+            <LiveScoreList
+              onSelectMatch={setSelectedMatchId}
+              selectedLeagueId={selectedLeagueId}
+            />
 
-          <div className="app-section-label">All Fixtures</div>
-          <FixturesBrowser onSelectMatch={setSelectedMatchId} />
+            <div className="app-section-divider" aria-hidden="true" />
+
+            <div className="app-section-label">
+              {selectedLeagueName ? selectedLeagueName : 'All Fixtures'}
+            </div>
+            <FixturesBrowser
+              onSelectMatch={setSelectedMatchId}
+              leagueFilter={selectedLeagueId}
+            />
+          </div>
         </div>
       )}
     </div>

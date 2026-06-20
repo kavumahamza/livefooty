@@ -15,10 +15,17 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function buildUrl(date, league, team) {
+/**
+ * Build the API URL.
+ * When leagueFilter (external, from CompetitionsNav) is set it takes precedence
+ * over the internal league text control (which is hidden when leagueFilter != null).
+ */
+function buildUrl(date, league, team, leagueFilter) {
   const params = new URLSearchParams();
   if (date) params.set('date', date);
-  if (league) params.set('league', league);
+  // External league filter wins; internal filter only used when no external one
+  const leagueParam = leagueFilter != null ? leagueFilter : league;
+  if (leagueParam) params.set('league', leagueParam);
   if (team) params.set('team', team);
   const qs = params.toString();
   return '/api/fixtures' + (qs ? '?' + qs : '');
@@ -66,12 +73,26 @@ function LeagueSection({ league, league_id, league_logo, league_flag, fixtures, 
 // Main component
 // ---------------------------------------------------------------------------
 
-export function FixturesBrowser({ onSelectMatch }) {
+/**
+ * FixturesBrowser
+ *
+ * Props:
+ *   onSelectMatch  {function}       — called with fixture id
+ *   leagueFilter   {number|null}    — external league filter from CompetitionsNav.
+ *                                    When set, the internal league control is
+ *                                    hidden; this value is used as the league
+ *                                    query param instead.
+ */
+export function FixturesBrowser({ onSelectMatch, leagueFilter }) {
   const [date, setDate] = useState(todayISO());
+  // Internal league state — only used when leagueFilter is null
   const [league, setLeague] = useState('');
   const [team, setTeam] = useState('');
 
-  const url = useMemo(() => buildUrl(date, league, team), [date, league, team]);
+  const url = useMemo(
+    () => buildUrl(date, league, team, leagueFilter),
+    [date, league, team, leagueFilter]
+  );
 
   const { data, error, loading } = usePoll(url, 30000);
 
@@ -86,17 +107,16 @@ export function FixturesBrowser({ onSelectMatch }) {
     [fixtures]
   );
 
-  // Derive league options from the full (unfiltered) fixture list for the select
-  // — we use whatever the backend returned after the league filter, so options
-  // reflect what's available.
+  // League options for the internal datalist — only relevant when leagueFilter is null
   const leagueOptions = useMemo(() => {
+    if (leagueFilter != null) return [];
     const seen = new Map();
     for (const f of fixtures) {
       const k = f.league_id ?? f.league;
       if (!seen.has(k)) seen.set(k, { id: f.league_id, name: f.league });
     }
     return Array.from(seen.values());
-  }, [fixtures]);
+  }, [fixtures, leagueFilter]);
 
   return (
     <div className="fbr-root">
@@ -113,25 +133,28 @@ export function FixturesBrowser({ onSelectMatch }) {
           />
         </label>
 
-        <label className="fbr-filter-label">
-          <span className="fbr-filter-text">League</span>
-          <input
-            type="text"
-            className="fbr-input"
-            placeholder="League name or ID"
-            value={league}
-            onChange={(e) => setLeague(e.target.value)}
-            list="fbr-league-datalist"
-            aria-label="Filter by league"
-          />
-          {leagueOptions.length > 0 && (
-            <datalist id="fbr-league-datalist">
-              {leagueOptions.map((l) => (
-                <option key={l.id ?? l.name} value={l.name} />
-              ))}
-            </datalist>
-          )}
-        </label>
+        {/* League control: hidden when CompetitionsNav owns league selection */}
+        {leagueFilter == null && (
+          <label className="fbr-filter-label">
+            <span className="fbr-filter-text">League</span>
+            <input
+              type="text"
+              className="fbr-input"
+              placeholder="League name or ID"
+              value={league}
+              onChange={(e) => setLeague(e.target.value)}
+              list="fbr-league-datalist"
+              aria-label="Filter by league"
+            />
+            {leagueOptions.length > 0 && (
+              <datalist id="fbr-league-datalist">
+                {leagueOptions.map((l) => (
+                  <option key={l.id ?? l.name} value={l.name} />
+                ))}
+              </datalist>
+            )}
+          </label>
+        )}
 
         <label className="fbr-filter-label">
           <span className="fbr-filter-text">Team</span>

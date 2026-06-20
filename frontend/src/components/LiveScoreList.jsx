@@ -55,16 +55,18 @@ function LeagueLogoImg({ src, alt }) {
   );
 }
 
-export function LiveScoreList({ onSelectMatch }) {
+export function LiveScoreList({ onSelectMatch, selectedLeagueId }) {
   const { data, error } = usePoll('/api/live', POLL_INTERVAL);
 
   const ageSeconds = data?.age_seconds ?? null;
 
-  // Guard: only render genuinely live fixtures
+  // Guard: only render genuinely live fixtures, filtered by league when set
   const liveFixtures = useMemo(() => {
     const all = data?.fixtures ?? [];
-    return all.filter((f) => isLive(f.status));
-  }, [data]);
+    const live = all.filter((f) => isLive(f.status));
+    if (selectedLeagueId == null) return live;
+    return live.filter((f) => f.league_id === selectedLeagueId);
+  }, [data, selectedLeagueId]);
 
   const leagueGroups = useMemo(() => groupByLeague(liveFixtures), [liveFixtures]);
 
