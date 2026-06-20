@@ -42,7 +42,7 @@ class Command(BaseCommand):
             f"redis={settings.REDIS_URL}"
         )
 
-        run_loop(
+        was_leader = run_loop(
             provider=provider,
             cache=cache,
             redis_client=redis_client,
@@ -50,3 +50,8 @@ class Command(BaseCommand):
             interval=interval,
             max_cycles=None,  # infinite in production
         )
+
+        if not was_leader:
+            self.stdout.write(
+                "[run_poller] Not leader — another poller holds the lock. Exiting."
+            )

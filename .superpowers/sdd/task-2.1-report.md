@@ -131,3 +131,55 @@ ARGV[2]) end"`) would eliminate the race entirely.
   MVP, needs Lua CAS before horizontal scaling.
 - Management command cannot run locally without Redis. Tested with fakeredis
   only; integration against a real Redis is deferred to deploy-time CI.
+
+---
+
+## Fix pass (reviewer fixes, post-commit 7834ab0)
+
+### Fix 1 — run_loop renewal-invariant restructure (backend/core/poller.py)
+
+Restructured the `run_loop` body so leadership is checked at the **top** of
+each iteration before poll and sleep, making the renewal invariant
+impossible to accidentally bypass.  Concrete changes:
+
+- `acquire_leadership` return value is now checked and the function returns
+  `False` early if not leader (was an implicit `return None`).
+- Loop body order is now: (1) renew on cycle > 0, (2) poll_once, (3) sleep,
+  (4) advance counter + max_cycles check.
+- Added a block comment above the loop explaining the renew-each-cycle
+  invariant and why renewal must stay above poll_once.
+- `run_loop` now returns `True` (was leader, ran normally) or `False` (was
+  not leader, exited immediately).  No public signature change — callers that
+  discarded `None` still work.
+
+### Fix 2 — test rename (backend/tests/test_poller.py)
+
+Renamed `test_does_not_sleep_or_loop` → `test_poll_once_overwrites_snapshot`
+to accurately describe what the test asserts (snapshot updated_at advances on
+second call).  The misleading "does not sleep" claim was removed; the body is
+unchanged.
+
+### Fix 3 — non-leader exit log (backend/core/management/commands/run_poller.py)
+
+`run_loop`'s new boolean return value is captured in `was_leader`.  When
+`False` (i.e. another poller holds the lock), the command now emits:
+
+```
+[run_poller] Not leader — another poller holds the lock. Exiting.
+```
+
+This resolves the silent exit identified in the prior Concerns section.
+
+### Pytest output — test_poller.py
+
+```
+..............                                                           [100%]
+14 passed in 0.13s
+```
+
+### Pytest output — neighbors (test_cache.py + test_mock_provider.py)
+
+```
+..........................                                               [100%]
+26 passed in 0.13s
+```

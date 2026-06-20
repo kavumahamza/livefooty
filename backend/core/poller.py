@@ -158,20 +158,31 @@ def run_loop(
     sleep_fn:
         Injectable sleep callable — pass ``lambda s: None`` in tests.
     """
-    cycle = 0
-    # Acquire leadership on first entry
-    is_leader = acquire_leadership(redis_client, token=token)
-    if not is_leader:
-        return  # Another poller already holds the lock; exit immediately.
+    # Acquire leadership on first entry; bail immediately if another holder exists.
+    if not acquire_leadership(redis_client, token=token):
+        return False  # signal: not leader
 
+    # Per-cycle invariant: leadership is checked (acquired on cycle 0, renewed on
+    # every subsequent cycle) at the TOP of each iteration, BEFORE poll_once and
+    # BEFORE sleep.  This ordering is intentional: it ensures a future edit cannot
+    # accidentally place poll_once or sleep_fn BEFORE the leadership gate, silently
+    # polling without holding the lock.  Do not move the renewal below poll_once.
+    cycle = 0
     while True:
+        # 1. Renew lease at the start of every cycle after the first.
+        #    (Cycle 0 is already covered by acquire_leadership above.)
+        if cycle > 0 and not renew_leadership(redis_client, token=token):
+            break  # Lost leadership; stop polling.
+
+        # 2. Poll exactly once while confirmed leader.
         poll_once(provider, cache)
+
+        # 3. Sleep until the next cycle.
         sleep_fn(interval)
 
+        # 4. Advance counter and check finite-mode bound.
         cycle += 1
         if max_cycles is not None and cycle >= max_cycles:
             break
 
-        # Renew before next cycle; exit loop if we lose leadership
-        if not renew_leadership(redis_client, token=token):
-            break
+    return True  # signal: was leader, completed normally

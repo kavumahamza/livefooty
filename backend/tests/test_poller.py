@@ -63,10 +63,8 @@ class TestPollOnce:
             missing = required_keys - item.keys()
             assert not missing, f"item missing keys: {missing}"
 
-    def test_does_not_sleep_or_loop(self, provider, cache):
-        """poll_once must be a single-shot call — no implicit side-effects."""
-        # Just verifying it returns quickly (no sleep) — run it twice and
-        # confirm the snapshot is updated (second call overwrites first).
+    def test_poll_once_overwrites_snapshot(self, provider, cache):
+        """Each call to poll_once overwrites the previous snapshot."""
         poll_once(provider, cache)
         snap1 = cache.get_snapshot("live_scores")
         poll_once(provider, cache)
