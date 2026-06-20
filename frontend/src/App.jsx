@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FixturesBrowser } from './components/FixturesBrowser.jsx'
+import { LiveScoreList } from './components/LiveScoreList.jsx'
 import './App.css'
 
 function App() {
@@ -22,7 +23,17 @@ function App() {
       </header>
 
       {selectedMatchId == null ? (
-        <FixturesBrowser onSelectMatch={setSelectedMatchId} />
+        <>
+          {/* Live Now section — polls /api/live every 20s */}
+          <LiveScoreList onSelectMatch={setSelectedMatchId} />
+
+          {/* Divider */}
+          <div className="app-section-divider" aria-hidden="true" />
+
+          {/* All Fixtures browser */}
+          <div className="app-section-label">All Fixtures</div>
+          <FixturesBrowser onSelectMatch={setSelectedMatchId} />
+        </>
       ) : (
         <div style={{ padding: '1rem', color: 'var(--muted)' }}>
           Match center for fixture #{selectedMatchId} — coming in Task 4.4.

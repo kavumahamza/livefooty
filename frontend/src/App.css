@@ -39,6 +39,23 @@
   border-color: var(--muted);
 }
 
+/* ── Home view layout ────────────────────────────────────── */
+.app-section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.5rem 0.75rem;
+  opacity: 0.5;
+}
+
+.app-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 0.4rem 0.75rem 0.2rem;
+}
+
 /* ── Legacy scaffold (unused in MVP, kept to avoid import errors) ── */
 .counter {
   font-size: 16px;

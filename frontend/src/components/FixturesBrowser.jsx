@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { usePoll } from '../api/poll.js';
-import { groupFixtures, isLive, formatRowTime } from './fixtures.js';
+import { groupFixtures } from './fixtures.js';
+import { FixtureRow } from './FixtureRow.jsx';
+import { StaleBadge } from './StaleBadge.jsx';
 import './FixturesBrowser.css';
+import './StaleBadge.css';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,59 +23,9 @@ function buildUrl(date, league, team) {
   return '/api/fixtures' + (qs ? '?' + qs : '');
 }
 
-function scoreStr(home, away, status) {
-  if (home == null || away == null) {
-    if (status === 'NS' || status === 'TBD') return '– : –';
-    return '? : ?';
-  }
-  return `${home} : ${away}`;
-}
-
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-function LiveDot() {
-  return (
-    <span className="fbr-live-dot" aria-hidden="true" title="Live" />
-  );
-}
-
-function FixtureRow({ fixture, onSelectMatch }) {
-  const live = isLive(fixture.status);
-  const timeLabel = formatRowTime(fixture);
-
-  function handleClick() {
-    onSelectMatch?.(fixture.id);
-  }
-
-  function handleKeyDown(e) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onSelectMatch?.(fixture.id);
-    }
-  }
-
-  return (
-    <button
-      className={`fbr-row${live ? ' fbr-row--live' : ''}`}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      aria-label={`${fixture.home} vs ${fixture.away}, ${timeLabel}`}
-      type="button"
-    >
-      <span className={`fbr-time${live ? ' fbr-time--live' : ''}`}>
-        {timeLabel}
-      </span>
-      <span className="fbr-home">{fixture.home}</span>
-      <span className="fbr-score">
-        {scoreStr(fixture.home_score, fixture.away_score, fixture.status)}
-      </span>
-      <span className="fbr-away">{fixture.away}</span>
-      {live && <LiveDot />}
-    </button>
-  );
-}
 
 function LeagueSection({ league, league_id, fixtures, onSelectMatch }) {
   return (
@@ -85,7 +38,7 @@ function LeagueSection({ league, league_id, fixtures, onSelectMatch }) {
       </header>
       <div className="fbr-league-rows">
         {fixtures.map((f) => (
-          <FixtureRow key={f.id} fixture={f} onSelectMatch={onSelectMatch} />
+          <FixtureRow key={f.id} fixture={f} onSelect={onSelectMatch} />
         ))}
       </div>
     </section>
@@ -125,12 +78,6 @@ export function FixturesBrowser({ onSelectMatch }) {
     }
     return Array.from(seen.values());
   }, [fixtures]);
-
-  // Staleness text
-  let staleText = null;
-  if (ageSeconds != null) {
-    staleText = `updated ${ageSeconds}s ago`;
-  }
 
   return (
     <div className="fbr-root">
@@ -180,14 +127,11 @@ export function FixturesBrowser({ onSelectMatch }) {
         </label>
       </div>
 
-      {/* Status bar */}
+      {/* Status bar — StaleBadge replaces inline staleness text */}
       <div className="fbr-statusbar">
         {loading && <span className="fbr-muted">Fetching…</span>}
-        {error && !loading && (
-          <span className="fbr-error">Connection error — retrying</span>
-        )}
-        {staleText && !error && (
-          <span className="fbr-muted">{staleText}</span>
+        {!loading && (
+          <StaleBadge ageSeconds={ageSeconds} error={error} intervalMs={30000} />
         )}
       </div>
 
@@ -207,7 +151,7 @@ export function FixturesBrowser({ onSelectMatch }) {
           </header>
           <div className="fbr-league-rows">
             {liveFixtures.map((f) => (
-              <FixtureRow key={f.id} fixture={f} onSelectMatch={onSelectMatch} />
+              <FixtureRow key={f.id} fixture={f} onSelect={onSelectMatch} />
             ))}
           </div>
         </section>

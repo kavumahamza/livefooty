@@ -1,0 +1,31 @@
+/* LiveScoreList — wraps live fixtures with a header + badge */
+
+.lsl-root {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.lsl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.lsl-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--live);
+}
+
+.lsl-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-size: 13px;
+  margin: 0;
+}
