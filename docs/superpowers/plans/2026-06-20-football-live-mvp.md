@@ -8,6 +8,19 @@
 
 **Tech Stack:** Django + Django REST Framework (plain JSON endpoints), Redis (cache + poller leader lock + active-match registry), React + Vite (responsive, polling via a Vite dev proxy for same-origin), API-Football (api-sports.io) as the live provider.
 
+## Design & UX (benchmark-informed)
+
+Benchmarked against FlashScore, LiveScore, SofaScore. **Direction: hybrid — FlashScore-style dense fixtures list + SofaScore-style rich tabbed match center.** Latency note: the pros hit 0.3–1.2s via licensed push feeds + in-stadium observers + regional CDNs; we cannot and do not match that — our 15–30s polling is the honest target (already reflected in the proposal). The benchmark output is primarily this design spec.
+
+- **Aesthetic:** dark, high-contrast theme; a single **live accent color** (green) for in-play state; mobile-first single column; tabs render as a horizontal strip on narrow screens. Define as CSS custom properties (`--bg`, `--surface`, `--text`, `--muted`, `--live`, `--home`, `--away`) so the whole app is themed from one place.
+- **Home / fixtures (FlashScore-dense):** fixtures **grouped under league headers** (league name + country); date selector; **live matches surfaced at the top**. Each row is compact and high-density: `minute-or-kickoff · home · score · away · live-dot`. Live rows use the accent color on the minute. Tapping a row opens the full-page match center.
+- **Match center (SofaScore-rich), full page, tabbed:** **Summary · Lineups · Stats**.
+  - **Header:** large scoreline — home / `score`–`score` / away, plus status/minute and the staleness badge.
+  - **Summary tab:** the **Attack Momentum strip** (hero visual) directly under the header, then the **event timeline** (each entry: minute + type icon for goal/card/subst + player; home events aligned left, away events aligned right of a center spine).
+  - **Lineups tab:** home/away starting XI as formation-grouped lists; render "lineups unavailable" if `null`. (Pitch view is phase 2.)
+  - **Stats tab:** paired home/away horizontal bars (possession, shots, shots on target, attacks, dangerous attacks); **omit any field that is null** rather than showing 0.
+- **Attack Momentum strip — exact visual spec (`MomentumStrip.jsx`):** a **diverging vertical-bar chart along the match-minute x-axis**. Bars rising from the center line = **home** pressure (`--home` color); bars falling below = **away** pressure (`--away` color); bar height = intensity for that minute-bucket. Two render modes from `compute_momentum`: `mode==="stats"` → height from shots/attacks/dangerous-attacks deltas; `mode==="events"` (fallback) → height from event density per bucket. A small "based on live stats" vs "based on match events" caption tells the user which mode is active (honesty UX).
+
 ## Global Constraints
 
 - **Deadline:** Core MVP must be demoable in 2–3 days. Cut order if behind: (1) momentum bar → fall back to event-density strip, (2) live stats/lineups panels → cached/optional, never block the live-score loop.
@@ -209,20 +222,25 @@ class BaseProvider:
 - [ ] Implement `usePoll` + proxy. Manual check: polls `/api/live`, updates on interval, stops on unmount.
 - [ ] Commit: `feat: vite react app + polling hook + same-origin dev proxy`.
 
-### Task 4.2: Fixtures browser + filters
-**Files:** Create `src/components/FixturesBrowser.jsx`.
-- [ ] Date/league/team controls; fetch `/api/fixtures` and filter via query params (server filters cache). Responsive list/grid.
-- [ ] Commit: `feat: fixtures browser with date/league/team filters`.
+### Task 4.2: Fixtures browser + filters (FlashScore-dense)
+**Files:** Create `src/components/FixturesBrowser.jsx`, `src/theme.css` (the `--bg/--surface/--text/--muted/--live/--home/--away` custom properties from the Design section).
+- [ ] Date/league/team controls; fetch `/api/fixtures` and filter via query params (server filters cache).
+- [ ] **Grouped-by-league layout** with league headers; live matches surfaced at top; compact high-density rows `minute/kickoff · home · score · away · live-dot`; live rows use `--live` accent. Dark theme via `theme.css` tokens. Responsive single column on mobile.
+- [ ] Commit: `feat: dense grouped fixtures browser with filters + dark theme tokens`.
 
 ### Task 4.3: Live score list (polling)
 **Files:** Create `src/components/LiveScoreList.jsx`, `src/components/StaleBadge.jsx`.
 - [ ] `usePoll('/api/live', 20000)`; auto-update scores/minute; `StaleBadge` reads `age_seconds` to show "updated Xs ago" and a "stale / reconnecting…" state when `error` or age exceeds threshold.
 - [ ] Commit: `feat: auto-updating live score list with staleness UX`.
 
-### Task 4.4: Match center + momentum strip
+### Task 4.4: Match center (SofaScore-rich, tabbed) + momentum strip
 **Files:** Create `src/components/MatchCenter.jsx`, `src/components/MomentumStrip.jsx`.
-- [ ] `usePoll('/api/match/<id>', 45000)`; render event timeline (goals/cards/subs), lineups panel (hide gracefully if `null`), key stats (hide null fields), and `MomentumStrip` rendering `mode==="stats"` bar or `mode==="events"` density fallback. **Core deliverable = event timeline; lineups/stats/momentum are layered on top and are the first cut if time is short.**
-- [ ] Commit: `feat: real-time match center with momentum/event-density visual`.
+- [ ] `usePoll('/api/match/<id>', 45000)`. **Full-page, tabbed: Summary · Lineups · Stats** (tabs as a horizontal strip on mobile). Header = large scoreline + status/minute + `StaleBadge`.
+- [ ] **Summary tab:** `MomentumStrip` (hero, directly under header) then event timeline — minute + type icon (goal/card/subst) + player, home events left / away events right of a center spine.
+- [ ] **Lineups tab:** home/away XI lists; "lineups unavailable" when `null`. **Stats tab:** paired home/away bars; omit null fields (don't show 0).
+- [ ] **`MomentumStrip`:** diverging vertical bars over match-minute x-axis — up=`--home`, down=`--away`, height=intensity; `mode==="stats"` from shots/attacks, `mode==="events"` density fallback; caption states which mode ("based on live stats" / "based on match events").
+- [ ] **Cut order if short on time:** event timeline is the non-negotiable core; momentum strip, then stats, then lineups are layered on top and cut from the top down.
+- [ ] Commit: `feat: tabbed match center with diverging attack-momentum visual`.
 
 ### Task 4.5: Responsive QA + App shell
 **Files:** Modify `src/App.jsx`, CSS.
