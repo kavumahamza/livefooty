@@ -3,13 +3,16 @@ import { render, screen, act } from '@testing-library/react';
 import { usePoll } from './poll.js';
 
 // A tiny component that uses the hook and renders diagnostic output
-function PollConsumer({ url, intervalMs }) {
-  const { data, error, loading } = usePoll(url, intervalMs);
+function PollConsumer({ url, intervalMs, onLastUpdatedAt }) {
+  const { data, error, loading, lastUpdatedAt } = usePoll(url, intervalMs);
+  // Call callback on every render so tests can capture lastUpdatedAt
+  if (onLastUpdatedAt) onLastUpdatedAt(lastUpdatedAt);
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="data">{data ? JSON.stringify(data) : 'null'}</span>
       <span data-testid="error">{error ? error.message : 'null'}</span>
+      <span data-testid="lastUpdatedAt">{lastUpdatedAt !== null ? String(lastUpdatedAt) : 'null'}</span>
     </div>
   );
 }
@@ -111,5 +114,92 @@ describe('usePoll', () => {
     });
 
     expect(fetch).toHaveBeenCalledTimes(1); // still only 1 — interval was cleared
+  });
+
+  it('lastUpdatedAt advances on success but stays unchanged after a subsequent error', async () => {
+    // First call succeeds, second call fails
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ score: 1 }),
+      })
+      .mockRejectedValueOnce(new Error('Network failure'));
+
+    render(<PollConsumer url="/api/live" intervalMs={5000} />);
+
+    // Flush immediate (successful) fetch
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    const tsAfterSuccess = screen.getByTestId('lastUpdatedAt').textContent;
+    expect(tsAfterSuccess).not.toBe('null');
+    expect(Number(tsAfterSuccess)).toBeGreaterThan(0);
+
+    // Advance to trigger the second (failing) fetch
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    expect(screen.getByTestId('error').textContent).toBe('Network failure');
+    // lastUpdatedAt must not have changed after the error
+    expect(screen.getByTestId('lastUpdatedAt').textContent).toBe(tsAfterSuccess);
+  });
+
+  it('re-subscribes when intervalMs changes: tears down old interval and polls on new cadence', async () => {
+    const { rerender } = render(<PollConsumer url="/api/live" intervalMs={20000} />);
+
+    // Flush immediate fetch on mount
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    // Advance 10 000 ms — still before the 20 000 ms interval, no extra fetch
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    // Rerender with a shorter interval — hook should re-subscribe
+    rerender(<PollConsumer url="/api/live" intervalMs={5000} />);
+
+    // The effect re-runs: an immediate fetch fires on re-subscribe
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const countAfterRerender = fetch.mock.calls.length;
+    expect(countAfterRerender).toBeGreaterThanOrEqual(2); // at least one new immediate fetch
+
+    // Advance exactly 5 000 ms — new interval should fire
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(fetch).toHaveBeenCalledTimes(countAfterRerender + 1);
+  });
+
+  it('re-subscribes when url changes: fetches the new url', async () => {
+    const { rerender } = render(<PollConsumer url="/api/live" intervalMs={5000} />);
+
+    // Flush immediate fetch on mount
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/live',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    // Rerender with a new URL
+    rerender(<PollConsumer url="/api/scores" intervalMs={5000} />);
+
+    // Immediate fetch on re-subscribe should use the new URL
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/scores',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
   });
 });
