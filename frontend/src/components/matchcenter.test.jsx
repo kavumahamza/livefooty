@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { eventSide, eventIcon, sortedEvents } from './matchcenter.js';
+import { eventSide, eventIcon, sortedEvents, teamColor } from './matchcenter.js';
 
 // ---------------------------------------------------------------------------
 // eventSide
@@ -125,5 +125,34 @@ describe('sortedEvents', () => {
     const sorted = sortedEvents(events);
     expect(sorted[0].type).toBe('goal');
     expect(sorted[1].type).toBe('card');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// teamColor
+// ---------------------------------------------------------------------------
+describe('teamColor', () => {
+  it('is deterministic — same input, same output', () => {
+    expect(teamColor('Manchester United')).toBe(teamColor('Manchester United'));
+  });
+
+  it('returns a string starting with "hsl"', () => {
+    expect(teamColor('Arsenal')).toMatch(/^hsl\(/);
+  });
+
+  it('returns different colors for different names', () => {
+    expect(teamColor('Chelsea')).not.toBe(teamColor('Liverpool'));
+  });
+
+  it('handles null input with a default color', () => {
+    expect(teamColor(null)).toBe('hsl(220, 40%, 45%)');
+  });
+
+  it('handles empty string with a default color', () => {
+    expect(teamColor('')).toBe('hsl(220, 40%, 45%)');
+  });
+
+  it('handles undefined input with a default color', () => {
+    expect(teamColor(undefined)).toBe('hsl(220, 40%, 45%)');
   });
 });

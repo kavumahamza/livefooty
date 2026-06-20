@@ -1,5 +1,5 @@
 /**
- * MatchCenter — SofaScore-style full-page tabbed match detail.
+ * MatchCenter — Cinematic SofaScore-style full-page tabbed match detail.
  *
  * Props:
  *   fixtureId  {number|string}  — the fixture to display
@@ -8,26 +8,48 @@
  * Polls /api/match/<fixtureId> every 45s via usePoll.
  * Tabs: Summary · Lineups · Stats
  */
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { usePoll } from '../api/poll.js';
 import { StaleBadge } from './StaleBadge.jsx';
 import { MomentumStrip } from './MomentumStrip.jsx';
 import { TeamCrest } from './TeamCrest.jsx';
+import { Skeleton } from './Skeleton.jsx';
 import { isLive } from './fixtures.js';
-import { eventSide, eventIcon, sortedEvents } from './matchcenter.js';
+import { eventSide, eventIcon, sortedEvents, teamColor } from './matchcenter.js';
 import './MatchCenter.css';
 
 // ---------------------------------------------------------------------------
-// Header
+// MatchHeader — cinematic hero with team-tint underglow + score-pop
 // ---------------------------------------------------------------------------
 function MatchHeader({ fixture, ageSeconds, error, onBack }) {
+  const prevScoreRef = useRef(null);
+  const [scorePop, setScorePop] = useState(false);
+
+  useEffect(() => {
+    if (!fixture) return;
+    const key = `${fixture.home_score}-${fixture.away_score}`;
+    if (prevScoreRef.current !== null && prevScoreRef.current !== key) {
+      setScorePop(true);
+      const t = setTimeout(() => setScorePop(false), 500);
+      return () => clearTimeout(t);
+    }
+    prevScoreRef.current = key;
+  }, [fixture?.home_score, fixture?.away_score]);
+
   if (!fixture) {
     return (
-      <div className="mc-header">
+      <div className="mc-header mc-header--loading">
         <button className="mc-back-btn" onClick={onBack} type="button" aria-label="Back">
           ← Back
         </button>
-        <div className="mc-loading">Loading match…</div>
+        <div className="mc-hero-skeleton">
+          <Skeleton width={48} height={48} radius="var(--r-sm)" />
+          <div className="mc-hero-skeleton-score">
+            <Skeleton width={120} height={40} radius="var(--r-sm)" />
+            <Skeleton width={60} height={16} radius="var(--r-sm)" />
+          </div>
+          <Skeleton width={48} height={48} radius="var(--r-sm)" />
+        </div>
         <StaleBadge ageSeconds={ageSeconds} error={error} intervalMs={45000} />
       </div>
     );
@@ -42,38 +64,52 @@ function MatchHeader({ fixture, ageSeconds, error, onBack }) {
     ? new Date(fixture.kickoff_utc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : fixture.status || '—';
 
+  const tintHome = teamColor(fixture.home);
+  const tintAway = teamColor(fixture.away);
+
   return (
-    <div className="mc-header">
+    <div
+      className="mc-header glass"
+      style={{ '--tint-home': tintHome, '--tint-away': tintAway }}
+    >
+      {/* Team color underglow: subtle radial gradient behind each side */}
+      <div className="mc-header-glow mc-header-glow--home" aria-hidden="true" />
+      <div className="mc-header-glow mc-header-glow--away" aria-hidden="true" />
+
       <button className="mc-back-btn" onClick={onBack} type="button" aria-label="Back">
         ← Back
       </button>
 
       <div className="mc-scoreline">
-        <span className="mc-team mc-team--home">
-          <TeamCrest name={fixture.home} logo={fixture.home_logo} size={40} />
-          {fixture.home}
-        </span>
+        {/* Home team */}
+        <div className="mc-team mc-team--home">
+          <TeamCrest name={fixture.home} logo={fixture.home_logo} size={48} />
+          <span className="mc-team-name">{fixture.home}</span>
+        </div>
+
+        {/* Score block */}
         <div className="mc-score-block">
-          <span className="mc-score">
+          <span className={`mc-score tabular${scorePop ? ' score-pop' : ''}`}>
             {fixture.home_score ?? '–'}&nbsp;–&nbsp;{fixture.away_score ?? '–'}
           </span>
-          <span
-            className="mc-minute"
-            style={{ color: live ? 'var(--live)' : 'var(--muted)' }}
-          >
-            {minuteDisplay}
+          {/* Status pill */}
+          <span className={`mc-status-pill${live ? ' mc-status-pill--live' : ''}`}>
+            {live && <span className="live-dot" aria-hidden="true" />}
+            <span style={{ color: live ? 'var(--live)' : 'var(--muted)' }}>
+              {minuteDisplay}
+            </span>
           </span>
         </div>
-        <span className="mc-team mc-team--away">
-          <TeamCrest name={fixture.away} logo={fixture.away_logo} size={40} />
-          {fixture.away}
-        </span>
+
+        {/* Away team */}
+        <div className="mc-team mc-team--away">
+          <span className="mc-team-name">{fixture.away}</span>
+          <TeamCrest name={fixture.away} logo={fixture.away_logo} size={48} />
+        </div>
       </div>
 
       <div className="mc-header-meta">
-        {fixture.league && (
-          <span className="mc-league">{fixture.league}</span>
-        )}
+        {fixture.league && <span className="mc-league">{fixture.league}</span>}
         <StaleBadge ageSeconds={ageSeconds} error={error} intervalMs={45000} />
       </div>
     </div>
@@ -81,11 +117,12 @@ function MatchHeader({ fixture, ageSeconds, error, onBack }) {
 }
 
 // ---------------------------------------------------------------------------
-// Tab strip
+// TabStrip — animated sliding indicator
 // ---------------------------------------------------------------------------
 const TABS = ['Summary', 'Lineups', 'Stats'];
 
 function TabStrip({ active, onSelect }) {
+  const activeIdx = TABS.indexOf(active);
   return (
     <div className="mc-tabs" role="tablist" aria-label="Match sections">
       {TABS.map((tab) => (
@@ -100,28 +137,37 @@ function TabStrip({ active, onSelect }) {
           {tab}
         </button>
       ))}
+      {/* Sliding indicator bar */}
+      <div
+        className="mc-tab-indicator"
+        style={{ transform: `translateX(${activeIdx * 100}%)` }}
+        aria-hidden="true"
+      />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Summary tab — MomentumStrip + event timeline
+// EventRow — colored chip with side-specific layout
 // ---------------------------------------------------------------------------
 function EventRow({ event, fixture }) {
   const side = eventSide(event, fixture?.home, fixture?.away);
   const icon = eventIcon(event);
-
   const minuteLabel = `${event.minute}'`;
   const playerLabel = event.player || '';
   const assistLabel = event.type === 'goal' && event.assist ? `assist: ${event.assist}` : '';
+  const chipColor =
+    side === 'home' ? 'var(--home)' : side === 'away' ? 'var(--away)' : 'var(--border)';
 
   if (side === 'home') {
     return (
       <div className="mc-event mc-event--home">
         <div className="mc-event-content mc-event-content--home">
-          <span className="mc-event-icon">{icon}</span>
-          <span className="mc-event-player">{playerLabel}</span>
-          {assistLabel && <span className="mc-event-assist">{assistLabel}</span>}
+          <span className="mc-event-chip" style={{ '--chip-accent': chipColor }}>
+            <span className="mc-event-icon">{icon}</span>
+            <span className="mc-event-player">{playerLabel}</span>
+            {assistLabel && <span className="mc-event-assist">{assistLabel}</span>}
+          </span>
         </div>
         <div className="mc-event-spine">
           <span className="mc-event-minute">{minuteLabel}</span>
@@ -139,35 +185,45 @@ function EventRow({ event, fixture }) {
           <span className="mc-event-minute">{minuteLabel}</span>
         </div>
         <div className="mc-event-content mc-event-content--away">
-          <span className="mc-event-icon">{icon}</span>
-          <span className="mc-event-player">{playerLabel}</span>
-          {assistLabel && <span className="mc-event-assist">{assistLabel}</span>}
+          <span className="mc-event-chip" style={{ '--chip-accent': chipColor }}>
+            <span className="mc-event-icon">{icon}</span>
+            <span className="mc-event-player">{playerLabel}</span>
+            {assistLabel && <span className="mc-event-assist">{assistLabel}</span>}
+          </span>
         </div>
       </div>
     );
   }
 
-  // neutral / unknown team
   return (
     <div className="mc-event mc-event--neutral">
       <div className="mc-event-content mc-event-content--home" />
       <div className="mc-event-spine">
         <span className="mc-event-minute">{minuteLabel}</span>
-        <span className="mc-event-icon">{icon}</span>
-        <span className="mc-event-player">{playerLabel}</span>
+        <span className="mc-event-chip" style={{ '--chip-accent': chipColor }}>
+          <span className="mc-event-icon">{icon}</span>
+          <span className="mc-event-player">{playerLabel}</span>
+        </span>
       </div>
       <div className="mc-event-content mc-event-content--away" />
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// SummaryTab — MomentumStrip wired with events + team names + timeline
+// ---------------------------------------------------------------------------
 function SummaryTab({ momentum, events, fixture }) {
   const sorted = sortedEvents(events);
 
   return (
     <div className="mc-summary-tab">
-      <MomentumStrip momentum={momentum} />
-
+      <MomentumStrip
+        momentum={momentum}
+        events={events}
+        homeTeam={fixture?.home}
+        awayTeam={fixture?.away}
+      />
       <div className="mc-timeline">
         <div className="mc-timeline-header">
           <span className="mc-tl-team-label mc-tl-team-label--home">{fixture?.home}</span>
@@ -188,7 +244,7 @@ function SummaryTab({ momentum, events, fixture }) {
 }
 
 // ---------------------------------------------------------------------------
-// Lineups tab
+// LineupsTab — glass columns
 // ---------------------------------------------------------------------------
 function extractName(player) {
   if (!player) return '?';
@@ -210,7 +266,7 @@ function LineupsTab({ lineups }) {
   return (
     <div className="mc-lineups-tab">
       <div className="mc-lineups-columns">
-        <div className="mc-lineup-col">
+        <div className="mc-lineup-col glass">
           <div className="mc-lineup-col-header">Home XI</div>
           <ol className="mc-lineup-list">
             {homeList.map((p, i) => (
@@ -218,7 +274,7 @@ function LineupsTab({ lineups }) {
             ))}
           </ol>
         </div>
-        <div className="mc-lineup-col">
+        <div className="mc-lineup-col glass">
           <div className="mc-lineup-col-header">Away XI</div>
           <ol className="mc-lineup-list">
             {awayList.map((p, i) => (
@@ -232,7 +288,7 @@ function LineupsTab({ lineups }) {
 }
 
 // ---------------------------------------------------------------------------
-// Stats tab
+// StatsTab — animated fill bars
 // ---------------------------------------------------------------------------
 const STAT_DEFS = [
   { label: 'Possession %',      homeKey: 'possession_home', awayKey: 'possession_away' },
@@ -241,7 +297,7 @@ const STAT_DEFS = [
   { label: 'Dangerous Attacks', homeKey: 'dangerous_home',  awayKey: 'dangerous_away' },
 ];
 
-function StatBar({ label, homeVal, awayVal }) {
+function StatBar({ label, homeVal, awayVal, animate }) {
   const total = homeVal + awayVal;
   const homePct = total > 0 ? (homeVal / total) * 100 : 50;
   const awayPct = 100 - homePct;
@@ -254,11 +310,19 @@ function StatBar({ label, homeVal, awayVal }) {
         <div className="mc-stat-track">
           <div
             className="mc-stat-fill mc-stat-fill--home"
-            style={{ width: `${homePct}%`, background: 'var(--home)' }}
+            style={{
+              width: animate ? `${homePct}%` : '0%',
+              background: 'var(--home)',
+              transition: animate ? 'width 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none',
+            }}
           />
           <div
             className="mc-stat-fill mc-stat-fill--away"
-            style={{ width: `${awayPct}%`, background: 'var(--away)' }}
+            style={{
+              width: animate ? `${awayPct}%` : '0%',
+              background: 'var(--away)',
+              transition: animate ? 'width 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none',
+            }}
           />
         </div>
         <span className="mc-stat-val mc-stat-val--away">{awayVal}</span>
@@ -268,6 +332,14 @@ function StatBar({ label, homeVal, awayVal }) {
 }
 
 function StatsTab({ stats }) {
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    // Small delay to allow DOM paint before transition starts
+    const t = setTimeout(() => setAnimate(true), 50);
+    return () => clearTimeout(t);
+  }, []);
+
   if (!stats) {
     return <div className="mc-unavailable">Stats unavailable.</div>;
   }
@@ -289,6 +361,7 @@ function StatsTab({ stats }) {
           label={label}
           homeVal={stats[homeKey]}
           awayVal={stats[awayKey]}
+          animate={animate}
         />
       ))}
     </div>
@@ -296,7 +369,7 @@ function StatsTab({ stats }) {
 }
 
 // ---------------------------------------------------------------------------
-// Main component
+// Main MatchCenter component
 // ---------------------------------------------------------------------------
 export function MatchCenter({ fixtureId, onBack }) {
   const [activeTab, setActiveTab] = useState('Summary');
@@ -307,32 +380,20 @@ export function MatchCenter({ fixtureId, onBack }) {
   const detail = data?.detail ?? {};
   const momentum = data?.momentum;
   const ageSeconds = data?.age_seconds ?? null;
-
   const events = detail?.events ?? [];
   const stats = detail?.stats ?? null;
   const lineups = detail?.lineups ?? null;
 
   return (
     <div className="mc-root">
-      <MatchHeader
-        fixture={fixture}
-        ageSeconds={ageSeconds}
-        error={error}
-        onBack={onBack}
-      />
-
+      <MatchHeader fixture={fixture} ageSeconds={ageSeconds} error={error} onBack={onBack} />
       <TabStrip active={activeTab} onSelect={setActiveTab} />
-
       <div className="mc-tab-content" role="tabpanel">
         {activeTab === 'Summary' && (
           <SummaryTab momentum={momentum} events={events} fixture={fixture} />
         )}
-        {activeTab === 'Lineups' && (
-          <LineupsTab lineups={lineups} />
-        )}
-        {activeTab === 'Stats' && (
-          <StatsTab stats={stats} />
-        )}
+        {activeTab === 'Lineups' && <LineupsTab lineups={lineups} />}
+        {activeTab === 'Stats' && <StatsTab stats={stats} />}
       </div>
     </div>
   );

@@ -46,3 +46,21 @@ export function sortedEvents(events) {
   if (!Array.isArray(events)) return [];
   return [...events].sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
 }
+
+/**
+ * teamColor(name) → hsl string
+ *
+ * Hashes a team name to a deterministic HSL color suitable for dark backgrounds.
+ * Returns a default neutral color for null/undefined/empty input.
+ */
+export function teamColor(name) {
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    return 'hsl(220, 40%, 45%)';
+  }
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  const hue = hash % 360;
+  return `hsl(${hue}, 65%, 55%)`;
+}

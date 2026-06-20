@@ -1,4 +1,4 @@
-/* MatchCenter styles — mobile-first, responsive */
+/* MatchCenter styles — cinematic redesign, mobile-first */
 
 .mc-root {
   display: flex;
@@ -6,26 +6,107 @@
   min-height: calc(100dvh - 48px); /* subtract app-header height */
   background: var(--bg);
   color: var(--text);
-  /* max-width is enforced by .app-content wrapper in App.jsx */
   width: 100%;
 }
 
-/* ── Header ───────────────────────────────────────────────── */
-.mc-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0.5rem 0.75rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
+/* ── Header ──────────────────────────────────────────────────── */
 
 /*
- * mc-back-btn base styles live in App.css (shell-level navigation polish).
- * Defined there so the rule applies regardless of CSS load order.
- * Additional context-specific tweaks below if needed.
+ * mc-header uses the `.glass` utility class for its base surface.
+ * Position: relative so the underglow divs can be absolutely placed.
+ * overflow: hidden clips the glows to the card's border-radius.
  */
+.mc-header {
+  position: relative;
+  overflow: hidden;
+  margin: 0.75rem 0.75rem 0;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 
+/* Loading state has no glass (data not ready) */
+.mc-header--loading {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+
+/* Team-tint underglow: home on the left, away on the right */
+.mc-header-glow--home,
+.mc-header-glow--away {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+.mc-header-glow--home {
+  left: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 0% 50%,
+    color-mix(in srgb, var(--tint-home, transparent) 15%, transparent) 0%,
+    transparent 70%
+  );
+}
+.mc-header-glow--away {
+  right: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 100% 50%,
+    color-mix(in srgb, var(--tint-away, transparent) 15%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+/* Ensure all header content sits above the glow layers */
+.mc-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Loading skeleton layout */
+.mc-hero-skeleton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+.mc-hero-skeleton-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+/* Back button */
+.mc-back-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 6px 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  transition: color 0.15s;
+}
+.mc-back-btn:hover { color: var(--text); }
+.mc-back-btn:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Score line: three-column flex */
 .mc-scoreline {
   display: flex;
   align-items: center;
@@ -34,52 +115,72 @@
   padding: 0.25rem 0;
 }
 
+/* Team column */
 .mc-team {
-  font-size: 0.9rem;
-  font-weight: 600;
   flex: 1;
-  /* Truncate gracefully on narrow screens instead of wrapping */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.mc-team--home { align-items: flex-end; }
+.mc-team--away { align-items: flex-start; }
+
+.mc-team-name {
+  font-size: 0.85rem;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0; /* critical: allow flex shrink + ellipsis */
+  max-width: 100%;
 }
-.mc-team--home { text-align: right; }
-.mc-team--away { text-align: left; }
 
-/* At ≥480px show larger team names */
 @media (min-width: 480px) {
-  .mc-team {
-    font-size: 1rem;
-  }
+  .mc-team-name { font-size: 0.95rem; }
 }
 
+/* Score block */
 .mc-score-block {
   display: flex;
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
-  min-width: 80px;
+  min-width: 90px;
+  gap: 6px;
 }
 
 .mc-score {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
 @media (min-width: 480px) {
-  .mc-score {
-    font-size: 1.8rem;
-  }
+  .mc-score { font-size: 2.4rem; }
 }
 
-.mc-minute {
+/* Status pill */
+.mc-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 2px 10px;
   font-size: 0.78rem;
-  font-weight: 500;
+  font-weight: 600;
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+.mc-status-pill--live {
+  border-color: var(--live);
+  box-shadow: 0 0 8px var(--live-glow);
 }
 
+/* Header meta row */
 .mc-header-meta {
   display: flex;
   align-items: center;
@@ -87,95 +188,93 @@
   font-size: 0.78rem;
   color: var(--muted);
 }
-
 .mc-league { color: var(--muted); }
 
-.mc-loading {
-  color: var(--muted);
-  font-size: 0.9rem;
-  padding: 0.5rem 0;
-}
-
-/* ── Tab strip ────────────────────────────────────────────── */
+/* ── Tab strip ─────────────────────────────────────────────── */
 .mc-tabs {
-  display: flex;
-  overflow-x: auto;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  scrollbar-width: none;
-  /* Sticky under app-header (48px) — tabs stay visible while scrolling content */
   position: sticky;
   top: 48px;
   z-index: 20;
+  display: flex;
+  overflow-x: auto;
+  /* Glass background */
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+  /* Position relative for the sliding indicator */
+  position: sticky;
 }
 .mc-tabs::-webkit-scrollbar { display: none; }
 
-/*
- * Tab buttons: min 44px height (Apple HIG touch target).
- * white-space: nowrap ensures horizontal scroll rather than wrapping.
- */
 .mc-tab {
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
   color: var(--muted);
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
-  /* ≥44px tap target */
   min-height: 44px;
   padding: 0 1.25rem;
   white-space: nowrap;
+  flex: 1;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+  position: relative;
+  z-index: 1;
 }
-
 .mc-tab:hover {
   color: var(--text);
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
-
 .mc-tab:active {
   background: color-mix(in srgb, var(--text) 12%, transparent);
 }
-
 .mc-tab--active {
+  /* No border-bottom here — the sliding indicator handles it */
   color: var(--text);
-  border-bottom-color: var(--live);
 }
-
 .mc-tab:focus-visible {
   outline: 2px solid var(--live);
   outline-offset: -2px;
 }
 
+/* Sliding indicator — positioned absolutely at bottom, 1/3 width */
+.mc-tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(100% / 3);
+  height: 2px;
+  background: var(--live);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 8px var(--live-glow);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Tab content area */
 .mc-tab-content {
   flex: 1;
   padding: 0.75rem;
 }
-
 @media (min-width: 480px) {
-  .mc-tab-content {
-    padding: 1rem;
-  }
+  .mc-tab-content { padding: 1rem; }
 }
 
-/* ── Momentum strip ───────────────────────────────────────── */
-/*
- * momentum-chart uses flex bars that are already fluid (flex:1 per bar).
- * Wrapping .momentum-strip in overflow:hidden prevents any bar from escaping
- * the container at narrow widths.
- */
+/* ── Momentum strip ────────────────────────────────────────── */
 .momentum-strip {
   margin-bottom: 1rem;
   padding: 0.5rem;
   background: var(--surface);
   border-radius: var(--radius);
-  overflow: hidden; /* contain fluid bars */
+  overflow: hidden;
 }
-
 .momentum-strip--loading {
   display: flex;
   align-items: center;
@@ -186,17 +285,13 @@
   color: var(--muted);
   font-size: 0.8rem;
 }
-.momentum-caption {
-  margin-top: 4px;
-}
-
-/* Ensure the chart itself never forces horizontal scroll */
+.momentum-caption { margin-top: 4px; }
 .momentum-chart {
   width: 100%;
   overflow: hidden;
 }
 
-/* ── Summary / event timeline ─────────────────────────────── */
+/* ── Summary / event timeline ───────────────────────────────── */
 .mc-summary-tab {}
 
 .mc-timeline {
@@ -250,19 +345,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 2px;
 }
 .mc-event-minute {
   font-size: 0.75rem;
   color: var(--muted);
   font-weight: 600;
 }
-.mc-event-icon {
-  font-size: 0.9rem;
-}
 
 .mc-event-content {
   flex: 1;
-  min-width: 0; /* allow shrink + ellipsis */
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -272,15 +365,35 @@
 .mc-event-content--home { justify-content: flex-end; text-align: right; }
 .mc-event-content--away { justify-content: flex-start; text-align: left; }
 
+/* Colored event chip */
+.mc-event-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--chip-accent, var(--border));
+  background: color-mix(in srgb, var(--chip-accent, transparent) 8%, transparent);
+  font-size: 0.82rem;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.mc-event-icon { font-size: 0.9rem; flex-shrink: 0; }
+
 .mc-event-player {
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mc-event-assist { color: var(--muted); font-size: 0.75rem; }
+.mc-event-assist {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
 
-/* ── Lineups ──────────────────────────────────────────────── */
+/* ── Lineups ────────────────────────────────────────────────── */
 .mc-lineups-tab { padding: 0.5rem 0; }
 .mc-lineups-columns {
   display: flex;
@@ -288,7 +401,9 @@
 }
 .mc-lineup-col {
   flex: 1;
-  min-width: 0; /* allow shrink */
+  min-width: 0;
+  /* glass class provides background, border, border-radius, box-shadow */
+  padding: 0.75rem;
 }
 .mc-lineup-col-header {
   font-size: 0.78rem;
@@ -296,7 +411,7 @@
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .mc-lineup-list {
   list-style: decimal;
@@ -311,14 +426,13 @@
   white-space: nowrap;
 }
 
-/* ── Stats ────────────────────────────────────────────────── */
+/* ── Stats ──────────────────────────────────────────────────── */
 .mc-stats-tab {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   padding: 0.5rem 0;
 }
-.mc-stat-row {}
 .mc-stat-label {
   font-size: 0.75rem;
   color: var(--muted);
@@ -345,14 +459,27 @@
   border-radius: 3px;
   overflow: hidden;
   background: var(--border);
-  min-width: 0; /* allow fluid shrink */
+  min-width: 0;
 }
-.mc-stat-fill { height: 100%; }
+.mc-stat-fill {
+  height: 100%;
+  /* width and transition are set inline to allow animate toggle */
+}
 
-/* ── Unavailable state ────────────────────────────────────── */
+/* ── Unavailable state ──────────────────────────────────────── */
 .mc-unavailable {
   color: var(--muted);
   font-size: 0.85rem;
   padding: 2rem 0;
   text-align: center;
+}
+
+/* ── Reduced-motion overrides ───────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .mc-tab-indicator {
+    transition: none;
+  }
+  .mc-stat-fill {
+    transition: none !important;
+  }
 }
