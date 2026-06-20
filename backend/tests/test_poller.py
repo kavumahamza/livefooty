@@ -172,3 +172,73 @@ class TestRunLoop:
             sleep_fn=lambda s: slept_with.append(s),
         )
         assert slept_with == [42]
+
+    def test_fixtures_step_failure_does_not_skip_refresh_active_matches(
+        self, cache, fake_redis
+    ):
+        """
+        Isolation: if poll_fixtures_once raises (provider.get_fixtures throws),
+        run_loop must still complete (return True), poll_once must still have
+        written live_scores, and refresh_active_matches must still have been
+        invoked (proven via a spy counter on the provider stub).
+        """
+        import dataclasses
+
+        # Minimal FixtureDTO-compatible dataclass so poll_once can serialise it.
+        @dataclasses.dataclass
+        class _FakeDTO:
+            id: int = 1
+            home: str = "Home FC"
+            away: str = "Away FC"
+            status: str = "LIVE"
+
+        refresh_call_count = []
+
+        class _BrokenFixturesProvider:
+            """poll_once succeeds, get_fixtures raises, refresh_active_matches is tracked."""
+
+            def get_live_scores(self):
+                return [_FakeDTO()]
+
+            def get_fixtures(self, date: str):
+                raise RuntimeError("transient provider error — fixtures unavailable")
+
+            # refresh_active_matches (core/match_detail.py) calls provider internally;
+            # we track it via a monkeypatch on the module below instead.
+
+        stub_provider = _BrokenFixturesProvider()
+
+        # Patch refresh_active_matches in the poller module so we can count calls
+        # without needing a real match-detail sub-system.
+        import core.poller as poller_module
+
+        original_refresh = poller_module.refresh_active_matches
+
+        def _spy_refresh(provider, cache):
+            refresh_call_count.append(1)
+
+        poller_module.refresh_active_matches = _spy_refresh
+        try:
+            result = run_loop(
+                provider=stub_provider,
+                cache=cache,
+                redis_client=fake_redis,
+                token="isolation-tok",
+                interval=0,
+                max_cycles=1,
+                sleep_fn=lambda s: None,
+            )
+        finally:
+            poller_module.refresh_active_matches = original_refresh
+
+        # Loop completed normally despite the middle step throwing.
+        assert result is True, "run_loop must return True (was-leader) even when fixtures step fails"
+
+        # poll_once succeeded → live_scores snapshot must exist.
+        snapshot = cache.get_snapshot("live_scores")
+        assert snapshot is not None, "live_scores snapshot must be written even when fixtures step fails"
+
+        # refresh_active_matches was still called despite the fixtures step failing.
+        assert len(refresh_call_count) == 1, (
+            "refresh_active_matches must still be invoked when poll_fixtures_once raises"
+        )

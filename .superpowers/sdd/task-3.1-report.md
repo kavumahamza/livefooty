@@ -153,5 +153,52 @@ Idempotent — safe to call multiple times.
 
 1. **No DRF**: views use plain Django `View` + `JsonResponse`. This is intentional — DRF is in requirements but not required here since there's no auth, no serializers, and JSON output is trivial. Can be migrated to APIView later.
 2. **Filtering is linear scan**: O(n) Python filter over the snapshot list. For an MVP with a few hundred fixtures per day this is fine; a production system would index in Redis or a DB.
-3. **poll_fixtures_once location in run_loop**: it's placed BETWEEN `poll_once` and `refresh_active_matches`. If `get_fixtures` throws (e.g. API outage), it would skip `refresh_active_matches`. A production poller would want try/except around each step.
+3. **poll_fixtures_once location in run_loop**: it's placed BETWEEN `poll_once` and `refresh_active_matches`. If `get_fixtures` throws (e.g. API outage), it would skip `refresh_active_matches`. A production poller would want try/except around each step. *(Fixed in Fix pass below.)*
 4. **`_cache_instance` singleton in `cache.py`**: in tests we monkeypatch `get_cache` at the view module level, so the singleton is never populated during tests. This is by design.
+
+---
+
+## Fix pass
+
+**Reviewer concern (commit c8a623a):** `run_loop` called the three per-cycle data steps in sequence with no exception isolation. A transient provider/API error on any earlier step would skip the later steps for that cycle; an unhandled exception could also break out of the loop entirely.
+
+### What changed
+
+**`backend/core/poller.py`**
+
+- Added `import logging` and `logger = logging.getLogger(__name__)` at module level.
+- Wrapped each of the three data-fetch calls in its own `try/except Exception`:
+  - `poll_once(provider, cache)` — catches and logs, continues.
+  - `poll_fixtures_once(provider, cache)` — catches and logs, continues.
+  - `refresh_active_matches(provider, cache)` — catches and logs, continues.
+- On exception each block logs `logger.warning("<step> failed: %s", exc)` and falls through to the next step.
+- Leadership renewal, loop control (`max_cycles`, `sleep_fn`), and return value are **unchanged** — only the three data-step calls are isolated.
+
+**`backend/tests/test_poller.py`**
+
+Added `test_fixtures_step_failure_does_not_skip_refresh_active_matches` to `TestRunLoop`:
+
+- Constructs a stub provider whose `get_live_scores()` returns a valid `_FakeDTO` (so `poll_once` succeeds and writes `live_scores`), and whose `get_fixtures()` raises `RuntimeError` (simulating a transient API outage).
+- Monkeypatches `core.poller.refresh_active_matches` with a spy counter.
+- Runs `run_loop(max_cycles=1, sleep_fn=no-op)`.
+- Asserts:
+  1. `run_loop` returns `True` (completed normally as leader).
+  2. `live_scores` snapshot was written by `poll_once` (middle failure didn't roll back earlier work).
+  3. The spy counter shows `refresh_active_matches` was invoked once (middle failure didn't block the third step).
+
+### pytest outputs
+
+**`tests/test_poller.py` only (15 tests):**
+
+```
+...............                                                          [100%]
+15 passed in 0.14s
+```
+
+**Full suite `tests/` (106 tests):**
+
+```
+........................................................................  [ 67%]
+..................................                                        [100%]
+106 passed in 0.42s
+```

@@ -32,9 +32,12 @@ run_loop:
 from __future__ import annotations
 
 import dataclasses
+import logging
 import time
 import uuid
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 from core.cache import SnapshotCache
 from core.match_detail import refresh_active_matches
@@ -197,16 +200,25 @@ def run_loop(
             break  # Lost leadership; stop polling.
 
         # 2. Poll exactly once while confirmed leader.
-        poll_once(provider, cache)
+        try:
+            poll_once(provider, cache)
+        except Exception as exc:
+            logger.warning("poll_once failed: %s", exc)
 
         # 2c. Also refresh the fixtures list each cycle so /api/fixtures stays fresh.
-        poll_fixtures_once(provider, cache)
+        try:
+            poll_fixtures_once(provider, cache)
+        except Exception as exc:
+            logger.warning("poll_fixtures_once failed: %s", exc)
 
         # 2b. Refresh detail for any actively-viewed matches (Task 2.2).
         #     This is intentionally a separate step from poll_once so that
         #     poll_once remains responsible solely for live-score aggregation
         #     and is easy to test in isolation.
-        refresh_active_matches(provider, cache)
+        try:
+            refresh_active_matches(provider, cache)
+        except Exception as exc:
+            logger.warning("refresh_active_matches failed: %s", exc)
 
         # 3. Sleep until the next cycle.
         sleep_fn(interval)
