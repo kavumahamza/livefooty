@@ -1,3 +1,45 @@
+/* ── App shell ──────────────────────────────────────────── */
+.app-shell {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.app-logo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.app-back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 13px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.app-back-btn:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+/* ── Legacy scaffold (unused in MVP, kept to avoid import errors) ── */
 .counter {
   font-size: 16px;
   padding: 5px 10px;

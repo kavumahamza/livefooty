@@ -1,0 +1,28 @@
+/* Football Live — global design tokens */
+:root {
+  --bg: #0e1116;
+  --surface: #171b22;
+  --surface-2: #1e2430;
+  --text: #e6e9ee;
+  --muted: #8b94a3;
+  --live: #2bd576;
+  --home: #4f8cff;
+  --away: #ff7a59;
+  --border: #2a2f3a;
+  --radius: 6px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
