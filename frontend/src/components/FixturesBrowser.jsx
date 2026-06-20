@@ -174,7 +174,7 @@ export function FixturesBrowser({ onSelectMatch }) {
         <p className="fbr-empty">Loading live data…</p>
       )}
       {!firstLoad && !isColdCache && fixtures.length === 0 && !error && (
-        <p className="fbr-empty">No matches found.</p>
+        <p className="fbr-empty">No matches found for these filters.</p>
       )}
 
       {/* Live section — surfaced at the top across all leagues */}

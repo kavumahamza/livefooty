@@ -205,6 +205,13 @@
   background: color-mix(in srgb, var(--live) 8%, var(--surface-2));
 }
 
+.fbr-row--live:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: -2px;
+  background: var(--surface-2);
+  z-index: 1;
+}
+
 /* ── Team cells ─────────────────────────────────────────── */
 .fbr-home {
   display: flex;

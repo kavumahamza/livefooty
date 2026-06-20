@@ -12,7 +12,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="app-wordmark" role="img" aria-label="LiveFooty home">
+        <span className="app-wordmark">
           <span className="app-wordmark-icon" aria-hidden="true">&#x26BD;</span>
           <span className="app-wordmark-text">LiveFooty</span>
         </span>
