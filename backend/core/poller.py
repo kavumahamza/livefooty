@@ -37,6 +37,7 @@ import uuid
 from typing import Callable
 
 from core.cache import SnapshotCache
+from core.match_detail import refresh_active_matches
 from core.providers.base import BaseProvider
 
 
@@ -176,6 +177,12 @@ def run_loop(
 
         # 2. Poll exactly once while confirmed leader.
         poll_once(provider, cache)
+
+        # 2b. Refresh detail for any actively-viewed matches (Task 2.2).
+        #     This is intentionally a separate step from poll_once so that
+        #     poll_once remains responsible solely for live-score aggregation
+        #     and is easy to test in isolation.
+        refresh_active_matches(provider, cache)
 
         # 3. Sleep until the next cycle.
         sleep_fn(interval)

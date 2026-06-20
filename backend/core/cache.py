@@ -89,6 +89,11 @@ class SnapshotCache:
             return True
         return snapshot["age_seconds"] > max_age
 
+    @property
+    def redis(self):
+        """Expose the underlying Redis client (e.g. for raw SET/GET/SCAN operations)."""
+        return self._redis
+
     def set_with_ttl(self, key: str, payload: Any, ttl_seconds: int) -> None:
         """
         Like set_snapshot but also sets a Redis key TTL so the key expires
