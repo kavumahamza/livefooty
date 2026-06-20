@@ -1,58 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { barGeometry, eventSide, eventIcon, sortedEvents } from './matchcenter.js';
-
-// ---------------------------------------------------------------------------
-// barGeometry
-// ---------------------------------------------------------------------------
-describe('barGeometry', () => {
-  it('value 0 → direction "none", heightPx 0', () => {
-    const result = barGeometry(0, 60);
-    expect(result.direction).toBe('none');
-    expect(result.heightPx).toBe(0);
-  });
-
-  it('value 1 (max) → direction "up", heightPx ≈ maxPx', () => {
-    const result = barGeometry(1, 60);
-    expect(result.direction).toBe('up');
-    expect(result.heightPx).toBeCloseTo(60);
-  });
-
-  it('value -1 → direction "down", heightPx ≈ maxPx', () => {
-    const result = barGeometry(-1, 60);
-    expect(result.direction).toBe('down');
-    expect(result.heightPx).toBeCloseTo(60);
-  });
-
-  it('value 0.5 → direction "up", heightPx ≈ half of maxPx', () => {
-    const result = barGeometry(0.5, 60);
-    expect(result.direction).toBe('up');
-    expect(result.heightPx).toBeCloseTo(30);
-  });
-
-  it('value -0.5 → direction "down", heightPx ≈ half of maxPx', () => {
-    const result = barGeometry(-0.5, 60);
-    expect(result.direction).toBe('down');
-    expect(result.heightPx).toBeCloseTo(30);
-  });
-
-  it('clamps value > 1 to maxPx', () => {
-    const result = barGeometry(1.5, 60);
-    expect(result.direction).toBe('up');
-    expect(result.heightPx).toBeCloseTo(60);
-  });
-
-  it('clamps value < -1 to maxPx downward', () => {
-    const result = barGeometry(-2, 60);
-    expect(result.direction).toBe('down');
-    expect(result.heightPx).toBeCloseTo(60);
-  });
-
-  it('works with different maxPx values', () => {
-    const result = barGeometry(0.25, 100);
-    expect(result.direction).toBe('up');
-    expect(result.heightPx).toBeCloseTo(25);
-  });
-});
+import { eventSide, eventIcon, sortedEvents } from './matchcenter.js';
 
 // ---------------------------------------------------------------------------
 // eventSide

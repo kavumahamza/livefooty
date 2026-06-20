@@ -4,21 +4,6 @@
  */
 
 /**
- * barGeometry(value, maxPx) → { direction: 'up'|'down'|'none', heightPx: number }
- *
- * value in [-1, 1] (positive = home, negative = away).
- * |value| > 1 is clamped to 1.
- * value 0 → direction 'none', heightPx 0.
- */
-export function barGeometry(value, maxPx) {
-  const clamped = Math.max(-1, Math.min(1, value));
-  const abs = Math.abs(clamped);
-  if (abs === 0) return { direction: 'none', heightPx: 0 };
-  const heightPx = abs * maxPx;
-  return { direction: clamped > 0 ? 'up' : 'down', heightPx };
-}
-
-/**
  * eventSide(event, home, away) → 'home'|'away'|'neutral'
  *
  * Compares event.team to the fixture home/away team names.
